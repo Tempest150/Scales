@@ -1,0 +1,72 @@
+#This is a GitHub Actions workflow that notifies a Discord channel when a new issue is opened, reopened, or closed in the repository. It also notifies the channel on push events, indicating whether the deployment was successful or failed.
+name: Issues Notification  CI/CD
+
+on:
+  push:
+    branches:
+      - '**'
+  issues:
+    types: [opened, reopened, closed]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Discord on push (failure)
+        if: failure() && github.event_name == 'push'
+        env:
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          MESSAGE: ${{ github.event.head_commit.message }}
+          AUTHOR: ${{ github.event.head_commit.author.name }}
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          ROLE_ID: ${{ secrets.DISCORD_ROLE_ID }}
+        run: |
+          MSG=$(printf ":x: <@&%s>\n**Deploy Failed**\n**Repo:** %s\n**Branch:** %s\n**Commit:** \`%s\`\n**Message:** %s\n**Author:** %s" "$ROLE_ID" "$REPO" "$BRANCH" "$SHA" "$MESSAGE" "$AUTHOR")
+          PAYLOAD=$(jq -rn --arg content "$MSG" '{content: $content}')
+          curl -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK"
+
+      - name: Notify Discord on push (success)
+        if: success() && github.event_name == 'push'
+        env:
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          URL: ${{ github.event.head_commit.url }}
+          MESSAGE: ${{ github.event.head_commit.message }}
+          AUTHOR: ${{ github.event.head_commit.author.name }}
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          ROLE_ID: ${{ secrets.DISCORD_ROLE_ID }}
+        run: |
+          MSG=$(printf ":white_check_mark: <@&%s>\n**Deploy Successful**\n**Repo:** %s\n**Branch:** %s\n**Commit:** [\`%s\`](%s)\n**Message:** %s\n**Author:** %s" "$ROLE_ID" "$REPO" "$BRANCH" "$SHA" "$URL" "$MESSAGE" "$AUTHOR")
+          PAYLOAD=$(jq -rn --arg content "$MSG" '{content: $content}')
+          curl -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK"
+
+      - name: Notify Discord on new issue
+        if: github.event_name == 'issues'
+        env:
+          REPO: ${{ github.repository }}
+          TITLE: ${{ github.event.issue.title }}
+          USER: ${{ github.event.issue.user.login }}
+          LINK: ${{ github.event.issue.html_url }}
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          ROLE_ID: ${{ secrets.DISCORD_ROLE_ID }}
+        run: |
+          MSG=$(printf ":bug: <@&%s>\n**New Issue Opened**\n**Repo:** %s\n**Title:** %s\n**By:** %s\n**Link:** %s" "$ROLE_ID" "$REPO" "$TITLE" "$USER" "$LINK")
+          PAYLOAD=$(jq -rn --arg content "$MSG" '{content: $content}')
+          curl -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK"
+
+      - name: Notify Discord on issue closed
+        if: github.event_name == 'issues' && github.event.action == 'closed'
+        env:
+          REPO: ${{ github.repository }}
+          TITLE: ${{ github.event.issue.title }}
+          USER: ${{ github.event.issue.user.login }}
+          LINK: ${{ github.event.issue.html_url }}
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          ROLE_ID: ${{ secrets.DISCORD_ROLE_ID }}
+        run: |
+          MSG=$(printf ":white_check_mark: <@&%s>\n**Issue Closed**\n**Repo:** %s\n**Title:** %s\n**By:** %s\n**Link:** %s" "$ROLE_ID" "$REPO" "$TITLE" "$USER" "$LINK")
+          PAYLOAD=$(jq -rn --arg content "$MSG" '{content: $content}')
+          curl -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK"
