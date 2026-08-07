@@ -1,1 +1,8 @@
 Scales/
+node_modules/
+.env
+venv/
+_pycache_/
+*.pyc
+*.pyo
+*.pyd

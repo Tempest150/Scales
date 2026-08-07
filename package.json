@@ -1,0 +1,19 @@
+{
+  "name": "Scales",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently --names \"backend,frontend\" --prefix-colors \"blue,green\" \"npm:backend\" \"npm:frontend\"",
+    "backend": "node scripts/run-backend.js",
+    "frontend": "cd frontend && npm run dev",
+    "install": "concurrently \"npm:install:backend\" \"npm:install:frontend\"",
+    "install:backend": "node scripts/install-backend.js",
+    "install:frontend": "cd frontend && npm install",
+    "build": "npm run install && npm run build --prefix frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "bootstrap-icons": "^1.13.1"
+  }
+}
