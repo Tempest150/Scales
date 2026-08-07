@@ -2,18 +2,20 @@
   "name": "Scales",
   "version": "1.0.0",
   "scripts": {
-    "dev": "concurrently --names \"backend,frontend\" --prefix-colors \"blue,green\" \"npm:backend\" \"npm:frontend\"",
+    "dev": "concurrently --names \"backend,tauri\" --prefix-colors \"blue,green\" \"npm:backend\" \"npm:tauri\"",
     "backend": "node scripts/run-backend.js",
-    "frontend": "cd frontend && npm run dev",
+    "tauri": "tauri dev",
+    "build": "tauri build",
     "install": "concurrently \"npm:install:backend\" \"npm:install:frontend\"",
     "install:backend": "node scripts/install-backend.js",
-    "install:frontend": "cd frontend && npm install",
-    "build": "npm run install && npm run build --prefix frontend"
+    "install:frontend": "cd frontend && npm install"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4",
     "concurrently": "^8.2.2"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.11.1",
     "bootstrap-icons": "^1.13.1"
   }
 }
