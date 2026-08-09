@@ -19,15 +19,6 @@
 
 ## Two ways to install dependencies
 
-**`npm install` from the repo root** runs `install:backend` +
-`install:frontend` in parallel:
-- `install:backend` → `scripts/install-backend.js`: creates `backend/venv`,
-  installs `requirements.txt`, then unconditionally runs
-  `curl ... sh.rustup.rs | sh` to install Rust — with no OS check, so on
-  Windows this depends on having a `sh` on PATH (e.g. via Git Bash); it isn't
-  guarded the way `scripts/setup.js`'s Rust step is.
-- `install:frontend` → `cd frontend && npm install`.
-
 **`node scripts/setup.js`** is a more thorough, platform-aware one-shot
 bootstrap: backend venv + deps, Rust via `winget`/`rustup`-curl/existing-check
 depending on OS, platform build deps (WebView2 + VS Build Tools on Windows,
@@ -38,9 +29,18 @@ setup that `install-backend.js` already does; the two aren't kept in sync
 with each other today, so if one changes (a new pip dependency, say) the
 other can silently drift.
 
-If you just need the backend running (no Tauri window), `npm install` is
-enough. If you're touching the Tauri shell, run `node scripts/setup.js` at
-least once to get Rust and the platform webview deps installed.
+
+
+**`npm install` from the repo root** runs `install:backend` +
+`install:frontend` in parallel:
+- `install:backend` → `scripts/install-backend.js`: creates `backend/venv`,
+  installs `requirements.txt`, then unconditionally runs
+  `curl ... sh.rustup.rs | sh` to install Rust — with no OS check, so on
+  Windows this depends on having a `sh` on PATH (e.g. via Git Bash); it isn't
+  guarded the way `scripts/setup.js`'s Rust step is.
+- `install:frontend` → `cd frontend && npm install`.
+
+
 
 ## Running it
 
