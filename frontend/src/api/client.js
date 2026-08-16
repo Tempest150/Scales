@@ -35,5 +35,10 @@ export const api = {
   
   me() {
     return request("/auth/me");
+  },
+
+  // Emails
+  syncStatus() {
+    return request("/emails/sync-status");
   }
 };

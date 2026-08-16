@@ -1,15 +1,19 @@
-import { useState } from 'react';
+import { useState } from "react";
+import { Google } from "react-bootstrap-icons";
 // api import no longer needed here — the context owns the login call now
+import { useTheme } from "../hooks/ThemeContext";
 
 export default function Login({ onLogin }) {
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError]       = useState('');
-  const [loading, setLoading]   = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
     try {
       await onLogin(email.trim().toLowerCase(), password);
@@ -21,129 +25,92 @@ export default function Login({ onLogin }) {
       setLoading(false);
     }
   };
+
   return (
-    <div style={s.page}>
-      <div style={s.card}>
-        <div style={s.eyebrow}>Personal finance</div>
-        <h1 style={s.title}>Leo</h1>
-        <p style={s.sub}>Sign in to your account</p>
+    <div className={`auth-page ${theme === "light" ? "auth-page--light" : ""}`}>
+      <button type="button" className="auth-theme-toggle" onClick={toggleTheme}>
+        {theme === "dark" ? "Light background" : "Dark background"}
+      </button>
+      <div className="auth-card">
+        <div className="auth-image-col">
+          <img
+            src="https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-login-form/draw2.svg"
+            alt="Login illustration"
+            className="auth-image"
+          />
+        </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div>
-            <label style={s.label}>Email</label>
-            <input
-              type="email"
-              required
-              autoFocus
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={s.input}
-              placeholder="you@example.com"
-            />
-          </div>
+        <div className="auth-form-col">
+          <div className="auth-eyebrow">Job Application System</div>
+          <h1 className="auth-title">Scales</h1>
+          <p className="auth-sub">Sign in to your account</p>
 
-          <div>
-            <label style={s.label}>Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={s.input}
-              placeholder="••••••••"
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="auth-form">
+            <div>
+              <label className="auth-label">Email</label>
+              <input
+                type="email"
+                required
+                autoFocus
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="auth-input"
+                placeholder="you@example.com"
+              />
+            </div>
 
-          {error && <p style={s.error}>{error}</p>}
+            <div>
+              <label className="auth-label">Password</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="auth-input"
+                placeholder="••••••••"
+              />
+            </div>
 
-          <button type="submit" disabled={loading} style={s.btn}>
-            {loading ? 'Signing in…' : 'Sign in'}
-          </button>
-          <p style={s.sub}>
-            Don't have an account? <a href="/register" style={s.link}>Register</a>
-          </p>
-        </form>
+            <div className="auth-remember-row">
+              <label className="auth-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                  className="auth-checkbox"
+                />
+                Remember me
+              </label>
+              <a href="#" className="auth-link">
+                Forgot password?
+              </a>
+            </div>
+
+            {error && <p className="auth-error">{error}</p>}
+
+            <button type="submit" disabled={loading} className="auth-btn">
+              {loading ? "Signing in…" : "Sign in"}
+            </button>
+
+            <div className="auth-divider">
+              <span className="auth-divider-line" />
+              <span className="auth-divider-text">OR</span>
+              <span className="auth-divider-line" />
+            </div>
+
+            <button type="button" disabled className="auth-social-btn">
+              <Google /> Continue with Google
+            </button>
+
+            <p className="auth-sub">
+              Don't have an account?{" "}
+              <a href="/register" className="auth-link">
+                Register
+              </a>
+            </p>
+          </form>
+        </div>
       </div>
     </div>
   );
 }
-
-const s = {
-  page: {
-    fontFamily: "'DM Sans', 'Inter', sans-serif",
-    background: '#0f0f0f',
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '1.5rem',
-  },
-  card: {
-    background: '#161616',
-    border: '0.5px solid rgba(255,255,255,0.08)',
-    borderRadius: 16,
-    padding: '2.5rem 2rem',
-    width: '100%',
-    maxWidth: 380,
-  },
-  eyebrow: {
-    fontSize: 12,
-    textTransform: 'uppercase',
-    letterSpacing: '0.14em',
-    color: '#555',
-    marginBottom: 6,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 600,
-    color: '#e8e6e1',
-    margin: '0 0 4px',
-  },
-  sub: {
-    fontSize: 14,
-    color: '#555',
-    marginBottom: '1.75rem',
-  },
-  label: {
-    display: 'block',
-    fontSize: 13,
-    color: '#888',
-    marginBottom: 6,
-  },
-  input: {
-    width: '100%',
-    background: '#1a1a1a',
-    border: '0.5px solid rgba(255,255,255,0.1)',
-    borderRadius: 8,
-    color: '#e8e6e1',
-    fontSize: 15,
-    padding: '10px 12px',
-    outline: 'none',
-    fontFamily: 'inherit',
-    boxSizing: 'border-box',
-    transition: 'border-color 0.15s',
-  },
-  error: {
-    fontSize: 13,
-    color: '#f87171',
-    background: 'rgba(248,113,113,0.08)',
-    border: '0.5px solid rgba(248,113,113,0.2)',
-    borderRadius: 6,
-    padding: '8px 12px',
-    margin: 0,
-  },
-  btn: {
-    width: '100%',
-    padding: '11px',
-    borderRadius: 8,
-    border: '0.5px solid rgba(74,222,128,0.4)',
-    background: 'rgba(74,222,128,0.1)',
-    color: '#4ade80',
-    fontSize: 15,
-    fontWeight: 500,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    marginTop: 4,
-    transition: 'background 0.15s',
-  },
-};

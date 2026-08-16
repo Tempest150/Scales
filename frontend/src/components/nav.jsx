@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
-import { Person, BarChart, BoxArrowRight } from "react-bootstrap-icons";
+import {  BarChart, BoxArrowRight } from "react-bootstrap-icons";
 
 const navLinks = [
-  { href: "/dashboard", label: "Dashboard", icon: <BarChart className="me-2" /> },
+  {
+    href: "/dashboard",
+    label: "Dashboard",
+    icon: <BarChart className="me-2" />,
+  },
 ];
 
 export default function Navbar({ user, onLogout }) {
@@ -30,7 +34,10 @@ export default function Navbar({ user, onLogout }) {
           <span className="navbar-toggler-icon" />
         </button>
 
-        <div className={`collapse navbar-collapse ${isOpen ? "show" : ""}`} id="mobile-menu">
+        <div
+          className={`collapse navbar-collapse ${isOpen ? "show" : ""}`}
+          id="mobile-menu"
+        >
           <ul className="navbar-nav ms-auto gap-1 align-items-md-center">
             {navLinks.map((link) => (
               <li key={link.href}>
@@ -38,9 +45,12 @@ export default function Navbar({ user, onLogout }) {
                   to={link.href}
                   className="nav-link"
                   onClick={() => setIsOpen(false)}
-                  aria-current={location.pathname === link.href ? "page" : undefined}
+                  aria-current={
+                    location.pathname === link.href ? "page" : undefined
+                  }
                 >
-                  {link.icon}{link.label}
+                  {link.icon}
+                  {link.label}
                 </Link>
               </li>
             ))}

@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import secrets
 
@@ -6,9 +7,18 @@ from authlib.integrations.httpx_client import AsyncOAuth2Client
 
 from db import Rimiru
 from useCheck import require_user
-from constants import Constants  # adjust import path to wherever Constants actually lives
-
+from routes.emails import classify_pending_emails
 auth_bp = Blueprint("auth", __name__)
+
+# Hold strong refs to fire-and-forget tasks so asyncio doesn't GC them mid-run.
+_background_tasks = set()
+
+
+def fire_and_forget(coro):
+    task = asyncio.create_task(coro)
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+    return task
 
 GOOGLE_AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
@@ -38,6 +48,7 @@ async def login():
         return jsonify({'error': 'Invalid credentials'}), 401
 
     session["user_id"] = user['id']
+    fire_and_forget(classify_pending_emails(user['id']))  # runs after the response is sent, doesn't block login
     return jsonify({
         'id': user['id'],
         'email': user['email'],

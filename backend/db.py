@@ -155,14 +155,24 @@ class Rimiru:
                 return dict(row) if row else None
         except Exception as e:
             raise
+        
+    
         # -------------------------
         # DELETE
     # -------------------------
     async def delete(self, table: str, filters: dict):
-        """Delete records matching filters"""
-        where_clause = " AND ".join(f"{k} = ${i+1}" for i, k in enumerate(filters.keys()))
+        """Delete records matching filters. List values use ANY() for multi-match."""
+        conditions = []
+        params = []
+        for i, (k, v) in enumerate(filters.items(), start=1):
+            if isinstance(v, list):
+                conditions.append(f"{k} = ANY(${i})")
+            else:
+                conditions.append(f"{k} = ${i}")
+            params.append(v)
+
+        where_clause = " AND ".join(conditions)
         sql = f"DELETE FROM {table} WHERE {where_clause} RETURNING *;"
-        params = list(filters.values())
 
         async with self.pool.acquire() as conn:
             return await conn.fetch(sql, *params)
