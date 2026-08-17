@@ -1,7 +1,9 @@
 import json
 import httpx
 
-
+KNOWN_NON_APPLICATION_SENDERS = {
+        "jobalerts-noreply@linkedin.com"
+    }
 class Duro:
     """
     Classifies an email as job-application-related (or not), and if so,
@@ -12,11 +14,10 @@ class Duro:
         self.model = model
         self.host = host
 
-    def _build_prompt(self, text: str,from_email: str,subject: str) -> str:
-        return f"""You are classifying an email to determine if it relates to a job application.
-                    You will receive the email text, subject, and sender's email address. 
-                    The email text is the main content of the email, the subject is the email's subject line, and the sender's email address is the email address of the person who sent the email.
-  
+    def _build_prompt(self, text: str, from_email: str, subject: str) -> str:
+        return f"""You are classifying an email to determine if it relates to a job application
+                    the user has personally submitted — not general job-market content.
+                    You will receive the email text, subject, and sender's email address.
 
                     Respond with ONLY a JSON object, no other text, in this exact shape:
                     {{
@@ -27,11 +28,22 @@ class Duro:
                     }}
 
                     Rules:
-                    - If the email is a job-application confirmation, interview invite, assessment
-                    request, rejection, or offer, mark is_application_related as true.
-                    - If it's a marketing email, newsletter, or anything unrelated to a job
-                    application, mark is_application_related as false and leave the other
-                    fields null.
+                    - Mark is_application_related as true ONLY if this email is about an
+                    application the user has already submitted: a confirmation the
+                    application was received, an interview invite, an assessment/OA
+                    request, a rejection, or an offer.
+                    - Mark is_application_related as false for:
+                    - Job alert digests or "new jobs matching your search" emails
+                        (e.g. LinkedIn Job Alerts, Indeed Job Alerts) — these list jobs
+                        the user has NOT applied to, even though they mention real
+                        company names and job titles.
+                    - Job board newsletters, recommended jobs, or "jobs you may be
+                        interested in" emails.
+                    - General marketing, newsletters, or anything unrelated to a
+                        specific application the user submitted.
+                    - The presence of company names or job titles alone does NOT make
+                    an email application-related — it must reference something the
+                    user personally applied to.
                     - Only extract company_name/role_title/status if you're confident — use null
                     rather than guessing.
 
@@ -44,7 +56,8 @@ class Duro:
             """
 
     async def _call_llm(self, prompt: str) -> str:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        timeout = httpx.Timeout(connect=10.0, read=300.0, write=10.0, pool=10.0)
+        async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.post(
                 f"{self.host}/api/generate",
                 json={
@@ -80,8 +93,15 @@ class Duro:
             "role_title": data.get("role_title"),
             "status": data.get("status"),
         }
-
+   
     async def classify(self, text: str, from_email: str, subject: str) -> dict:
+        if from_email.lower() in KNOWN_NON_APPLICATION_SENDERS:
+            return {
+                "is_application_related": False,
+                "company_name": None,
+                "role_title": None,
+                "status": None,
+            }
         prompt = self._build_prompt(text, from_email, subject)
         raw = await self._call_llm(prompt)
         return self._parse_response(raw)
