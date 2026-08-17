@@ -18,6 +18,9 @@ class Constants:
     PGPASSWORD = os.getenv("PGPASSWORD")
     PGDATABASE = os.getenv("PGDATABASE")
     SECRET_KEY = os.getenv("SECRET_KEY")
+    GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+    GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+    FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 
 
 def format_due_date(day_num):

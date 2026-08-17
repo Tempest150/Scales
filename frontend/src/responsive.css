@@ -227,7 +227,6 @@ html, body, #root {
   color: var(--auth-social-color);
   font-size: 14px;
   font-weight: 500;
-  cursor: not-allowed;
   font-family: inherit;
   display: flex;
   align-items: center;

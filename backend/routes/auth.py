@@ -4,7 +4,7 @@ import secrets
 
 from quart import Blueprint, request, jsonify, session, g, url_for, redirect
 from authlib.integrations.httpx_client import AsyncOAuth2Client
-
+from constants import Constants
 from db import Rimiru
 from useCheck import require_user
 from routes.emails import classify_pending_emails
@@ -106,10 +106,12 @@ async def logout():
 async def google_login():
     state = secrets.token_urlsafe(16)
     session['oauth_state'] = state
-
+    redirect_uri = url_for('auth.google_callback', _external=True)
+    print(redirect_uri)
     client = AsyncOAuth2Client(
-        #client_id=Constants.GOOGLE_CLIENT_ID,
-        redirect_uri=url_for('auth.google_callback', _external=True),
+        client_id=Constants.GOOGLE_CLIENT_ID,
+        client_secret=Constants.GOOGLE_CLIENT_SECRET,
+        redirect_uri=redirect_uri,
         scope='openid email profile',
     )
     uri, state = client.create_authorization_url(GOOGLE_AUTHORIZE_URL, state=state)
@@ -123,8 +125,8 @@ async def google_callback():
         return jsonify({'error': 'Invalid state'}), 400
 
     client = AsyncOAuth2Client(
-        #client_id=Constants.GOOGLE_CLIENT_ID,
-        #client_secret=Constants.GOOGLE_CLIENT_SECRET,
+        client_id=Constants.GOOGLE_CLIENT_ID,
+        client_secret=Constants.GOOGLE_CLIENT_SECRET,
         redirect_uri=url_for('auth.google_callback', _external=True),
     )
     token = await client.fetch_token(
@@ -158,4 +160,4 @@ async def google_callback():
         )
 
     session['user_id'] = user['id']  # type: ignore
-    return redirect('/dashboard')
+    return redirect(f'{Constants.FRONTEND_URL}/dashboard') #since the frontend is on a different port, we need to redirect to the frontend URL

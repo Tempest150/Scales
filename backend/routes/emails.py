@@ -72,9 +72,7 @@ async def classify_pending_emails(user_id):
 
 
       
-        if application_related:
-            for email_id, data in application_related.items():
-                await db.upsert(table="messages", data=data, conflict_column="id")
+
 
         if clear:
             await db.delete(table="messages", filters={"id": list(clear)})
@@ -110,10 +108,9 @@ async def resolve_application(conn: Rimiru, user_id: str, email: dict, classific
             )
     
     
-   
     r = await conn.execute(
-    "UPDATE messages SET application_id = $1 WHERE id = $2",
-    params=[application_id, email.get("id")],
+    "UPDATE messages SET application_id = $1, status = $3 WHERE id = $2",
+    params=[application_id, email.get("id"), "classified"],
     fetch=False,
     )
     if r == "UPDATE 0":

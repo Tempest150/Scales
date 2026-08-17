@@ -65,3 +65,21 @@ run(`npm install @tauri-apps/api`, { cwd: 'frontend' });
 
 console.log('\n=== Setup complete ===');
 console.log('Run `npx tauri dev` from the frontend directory to launch the app shell.');
+
+// ---------- 5. Ollama + models ----------
+console.log('\n=== Checking Ollama ===');
+if (hasCommand('ollama')) {
+  console.log('Ollama already installed, skipping install.');
+} else if (isWin) {
+  run(`winget install --silent Ollama.Ollama`);
+} else if (isMac) {
+  run(`curl -fsSL https://ollama.com/install.sh | sh`);
+} else if (isLinux) {
+  run(`curl -fsSL https://ollama.com/install.sh | sh`);
+}
+
+console.log('\n=== Pulling required models ===');
+const requiredModels = ['qwen2.5:3b'];
+for (const model of requiredModels) {
+  run(`ollama pull ${model}`);
+}

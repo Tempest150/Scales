@@ -10,7 +10,9 @@ export default function Login({ onLogin }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { theme, toggleTheme } = useTheme();
-
+  const handleGoogleLogin = () => {
+    window.location.href = "/api/auth/google/login";
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -98,7 +100,11 @@ export default function Login({ onLogin }) {
               <span className="auth-divider-line" />
             </div>
 
-            <button type="button" disabled className="auth-social-btn">
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              className="auth-social-btn"
+            >
               <Google /> Continue with Google
             </button>
 
