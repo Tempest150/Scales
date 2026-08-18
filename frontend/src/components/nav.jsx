@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
-import {  BarChart, BoxArrowRight } from "react-bootstrap-icons";
+import { BarChart, BoxArrowRight } from "react-bootstrap-icons";
+import { useTheme } from "../hooks/ThemeContext";
 
 const navLinks = [
   {
@@ -13,18 +14,22 @@ const navLinks = [
 export default function Navbar({ user, onLogout }) {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <nav
-      className="navbar navbar-expand-md navbar-dark bg-primary"
+      className="navbar navbar-expand-md navbar-dark app-navbar"
       role="navigation"
       aria-label="Main navigation"
     >
       <div className="container position-relative">
-        <span className="navbar-brand fw-semibold">Leo</span>
+        <span className="navbar-brand fw-semibold">
+          <span className="app-navbar-dot" />
+          Scales
+        </span>
 
         <button
-          className="navbar-toggler"
+          className="navbar-toggler app-navbar-toggler"
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           aria-controls="mobile-menu"
@@ -55,15 +60,22 @@ export default function Navbar({ user, onLogout }) {
               </li>
             ))}
 
+            <li className="nav-item ms-md-2">
+              <button
+                type="button"
+                className="app-navbar-theme-toggle"
+                onClick={toggleTheme}
+              >
+                {theme === "dark" ? "Light" : "Dark"}
+              </button>
+            </li>
+
             {user && (
               <li className="nav-item ms-md-2 d-flex align-items-center gap-2">
-                <span className="text-white-50" style={{ fontSize: 13 }}>
-                  {user.name || user.email}
-                </span>
+                
                 <button
                   onClick={onLogout}
-                  className="btn btn-sm btn-outline-light d-flex align-items-center gap-1"
-                  style={{ fontSize: 13 }}
+                  className="app-navbar-signout"
                   title="Sign out"
                 >
                   <BoxArrowRight /> Sign out

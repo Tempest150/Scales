@@ -9,6 +9,7 @@ export function ThemeProvider({ children }) {
 
   useEffect(() => {
     localStorage.setItem("scales-auth-theme", theme);
+    document.documentElement.dataset.theme = theme;
   }, [theme]);
 
   const toggleTheme = () => {

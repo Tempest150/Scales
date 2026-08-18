@@ -1,6 +1,11 @@
-/* Auth pages (Login / Register) — shared responsive styles.
+/* ==========================================================================
+   Scales — shared styles
+   Auth pages (Login / Register) + reusable panel system.
+   Palette: amber-slate (mapped from shadcn-style design tokens).
    Background theme is controlled by the `auth-page--light` modifier,
-   toggled at runtime via the theme switch button on each page. */
+   toggled at runtime via the theme switch button on each page.
+   ========================================================================== */
+
 html, body, #root {
   margin: 0;
   padding: 0;
@@ -11,25 +16,67 @@ html, body, #root {
 * {
   box-sizing: border-box;
 }
-.auth-page {
-  --auth-bg: #0f0f0f;
-  --auth-card-bg: #161616;
-  --auth-border: rgba(255, 255, 255, 0.08);
-  --auth-border-strong: rgba(255, 255, 255, 0.1);
-  --auth-text: #e8e6e1;
-  --auth-text-dim: #555555;
-  --auth-text-dimmer: #888888;
-  --auth-input-bg: #1a1a1a;
-  --auth-accent: #4ade80;
-  --auth-accent-bg: rgba(74, 222, 128, 0.1);
-  --auth-accent-border: rgba(74, 222, 128, 0.4);
-  --auth-error: #f87171;
-  --auth-error-bg: rgba(248, 113, 113, 0.08);
-  --auth-error-border: rgba(248, 113, 113, 0.2);
-  --auth-social-bg: rgba(59, 89, 152, 0.15);
-  --auth-social-color: #7f96c9;
 
-  font-family: 'DM Sans', 'Inter', sans-serif;
+/* ==========================================================================
+   Amber-slate palette — dark (default) + light variant.
+   Defined on :root so every page/component (auth, nav, dashboard) shares
+   one theme, toggled app-wide via `data-theme` on <html> (see ThemeContext).
+   ========================================================================== */
+
+:root {
+  --auth-bg: #1a1a1a;
+  --auth-card-bg: #202020;
+  --auth-muted-bg: #2a2a2a;
+  --auth-border: #353535;
+  --auth-border-strong: #454545;
+  --auth-text: #e5e5e5;
+  --auth-text-dim: #808080;
+  --auth-text-dimmer: #6b6b6b;
+  --auth-input-bg: #303030;
+  --auth-accent: #df6035;
+  --auth-accent-bg: rgba(223, 96, 53, 0.12);
+  --auth-accent-border: rgba(223, 96, 53, 0.4);
+  --auth-accent-hover: #e8703f;
+  --auth-error: #ef4444;
+  --auth-error-bg: rgba(239, 68, 68, 0.08);
+  --auth-error-border: rgba(239, 68, 68, 0.2);
+  --auth-social-bg: rgba(47, 75, 121, 0.15);
+  --auth-social-color: #85a6c7;
+  --auth-radius: 8px;
+  --auth-radius-lg: 10px;
+}
+
+:root[data-theme="light"] {
+  --auth-bg: #e8ebed;
+  --auth-card-bg: #ffffff;
+  --auth-muted-bg: #f9fafb;
+  --auth-border: #cccccc;
+  --auth-border-strong: #b0b0b0;
+  --auth-text: #333333;
+  --auth-text-dim: #6b7280;
+  --auth-text-dimmer: #808080;
+  --auth-input-bg: #f4f5f7;
+  --auth-accent: #df6035;
+  --auth-accent-bg: rgba(223, 96, 53, 0.08);
+  --auth-accent-border: rgba(223, 96, 53, 0.35);
+  --auth-accent-hover: #c6522c;
+  --auth-social-bg: rgba(47, 75, 121, 0.08);
+  --auth-social-color: #2f4b79;
+}
+
+body {
+  font-family: 'Outfit', 'DM Sans', 'Inter', sans-serif;
+  background: var(--auth-bg);
+  color: var(--auth-text);
+  transition: background 0.2s, color 0.2s;
+}
+
+/* ==========================================================================
+   Auth page — dark (default) + light variant
+   ========================================================================== */
+
+.auth-page {
+  font-family: 'Outfit', 'DM Sans', 'Inter', sans-serif;
   background: var(--auth-bg);
   min-height: 100vh;
   display: flex;
@@ -40,24 +87,12 @@ html, body, #root {
   transition: background 0.2s;
 }
 
-/* Opposite (light) background option */
-.auth-page--light {
-  --auth-bg: #f4f3ee;
-  --auth-card-bg: #ffffff;
-  --auth-border: rgba(0, 0, 0, 0.08);
-  --auth-border-strong: rgba(0, 0, 0, 0.12);
-  --auth-text: #17171a;
-  --auth-text-dim: #6b6b66;
-  --auth-text-dimmer: #5a5a55;
-  --auth-input-bg: #f0efe9;
-}
-
 .auth-theme-toggle {
   position: absolute;
   top: 1rem;
   right: 1rem;
   background: transparent;
-  border: 0.5px solid var(--auth-border-strong);
+  border: 1px solid var(--auth-border-strong);
   color: var(--auth-text-dimmer);
   border-radius: 999px;
   padding: 6px 12px;
@@ -72,10 +107,14 @@ html, body, #root {
   border-color: var(--auth-accent-border);
 }
 
+/* ==========================================================================
+   Auth card — flattened: thin border, minimal radius, no glow/shadow
+   ========================================================================== */
+
 .auth-card {
   background: var(--auth-card-bg);
-  border: 0.5px solid var(--auth-border);
-  border-radius: 16px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--auth-radius-lg);
   padding: 2.5rem 2rem;
   width: 100%;
   max-width: 760px;
@@ -141,8 +180,8 @@ html, body, #root {
 .auth-input {
   width: 100%;
   background: var(--auth-input-bg);
-  border: 0.5px solid var(--auth-border-strong);
-  border-radius: 8px;
+  border: 1px solid var(--auth-border-strong);
+  border-radius: var(--auth-radius);
   color: var(--auth-text);
   font-size: 15px;
   padding: 10px 12px;
@@ -153,7 +192,7 @@ html, body, #root {
 }
 
 .auth-input:focus {
-  border-color: var(--auth-accent-border);
+  border-color: var(--auth-accent);
 }
 
 .auth-remember-row {
@@ -179,7 +218,7 @@ html, body, #root {
   font-size: 13px;
   color: var(--auth-error);
   background: var(--auth-error-bg);
-  border: 0.5px solid var(--auth-error-border);
+  border: 1px solid var(--auth-error-border);
   border-radius: 6px;
   padding: 8px 12px;
   margin: 0;
@@ -188,8 +227,8 @@ html, body, #root {
 .auth-btn {
   width: 100%;
   padding: 11px;
-  border-radius: 8px;
-  border: 0.5px solid var(--auth-accent-border);
+  border-radius: var(--auth-radius);
+  border: 1px solid var(--auth-accent-border);
   background: var(--auth-accent-bg);
   color: var(--auth-accent);
   font-size: 15px;
@@ -197,7 +236,17 @@ html, body, #root {
   cursor: pointer;
   font-family: inherit;
   margin-top: 4px;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.auth-btn:hover:not(:disabled) {
+  background: var(--auth-accent-border);
+  border-color: var(--auth-accent);
+}
+
+.auth-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .auth-divider {
@@ -221,8 +270,8 @@ html, body, #root {
 .auth-social-btn {
   width: 100%;
   padding: 10px;
-  border-radius: 8px;
-  border: 0.5px solid var(--auth-border);
+  border-radius: var(--auth-radius);
+  border: 1px solid var(--auth-border);
   background: var(--auth-social-bg);
   color: var(--auth-social-color);
   font-size: 14px;
@@ -232,12 +281,22 @@ html, body, #root {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.auth-social-btn:hover {
+  border-color: var(--auth-border-strong);
 }
 
 .auth-link {
   color: var(--auth-accent);
   text-decoration: none;
   font-size: 13px;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
 }
 
 /* Responsive breakpoints */
@@ -263,7 +322,7 @@ html, body, #root {
 
   .auth-card {
     padding: 1.75rem 1.25rem;
-    border-radius: 12px;
+    border-radius: var(--auth-radius);
   }
 
   .auth-theme-toggle {
@@ -282,11 +341,14 @@ html, body, #root {
   }
 }
 
-/* Post-login sync loader — reuses the .auth-page background/theme shell above */
+/* ==========================================================================
+   Post-login sync loader — reuses the .auth-page background/theme shell
+   ========================================================================== */
+
 .sync-loader-card {
   background: var(--auth-card-bg);
-  border: 0.5px solid var(--auth-border);
-  border-radius: 16px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--auth-radius-lg);
   padding: 2.5rem 2rem;
   width: 100%;
   max-width: 380px;
@@ -335,4 +397,376 @@ html, body, #root {
   background: var(--auth-accent);
   border-radius: 999px;
   transition: width 0.3s ease;
+}
+
+/* ==========================================================================
+   Panel system — VS Code style: flat, thin-bordered, background-differentiated
+   sections. Use inside the dashboard/app shell for any distinct region
+   (sidebar, message list, detail view, terminal-like log panes, etc.)
+
+   Structure:
+     <div class="panel">
+       <div class="panel-header">Title</div>
+       <div class="panel-body">...</div>
+     </div>
+
+   Opt out of all panel chrome (border/bg/padding) with `panel--flat`.
+   ========================================================================== */
+
+.panel {
+  background: var(--auth-card-bg, #202020);
+  border: 1px solid var(--auth-border, #353535);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--auth-border, #353535);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--auth-text-dim, #808080);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--auth-muted-bg, #2a2a2a);
+}
+
+.panel-body {
+  padding: 12px;
+  flex: 1;
+  overflow: auto;
+}
+
+/* Muted variant — slightly different shade than a neighboring panel,
+   e.g. a sidebar panel next to a main content panel */
+.panel--muted {
+  background: var(--auth-muted-bg, #2a2a2a);
+}
+
+.panel--muted .panel-header {
+  background: var(--auth-card-bg, #202020);
+}
+
+/* Panels placed side-by-side or stacked share a border instead of doubling it */
+.panel-row {
+  display: flex;
+  align-items: stretch;
+}
+
+.panel-row > .panel {
+  border-radius: 0;
+  border-right-width: 0;
+}
+
+.panel-row > .panel:last-child {
+  border-right-width: 1px;
+}
+
+.panel-row > .panel:first-child {
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+
+.panel-row > .panel:last-child {
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+.panel-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-col > .panel {
+  border-radius: 0;
+  border-bottom-width: 0;
+}
+
+.panel-col > .panel:last-child {
+  border-bottom-width: 1px;
+}
+
+.panel-col > .panel:first-child {
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+}
+
+.panel-col > .panel:last-child {
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+/* Tab-style divider, like VS Code's editor tabs */
+.panel-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--auth-border, #353535);
+  background: var(--auth-muted-bg, #2a2a2a);
+}
+
+.panel-tab {
+  padding: 8px 16px;
+  font-size: 13px;
+  color: var(--auth-text-dim, #808080);
+  border-right: 1px solid var(--auth-border, #353535);
+  cursor: pointer;
+  background: transparent;
+  font-family: inherit;
+}
+
+.panel-tab:hover {
+  color: var(--auth-text, #e5e5e5);
+}
+
+.panel-tab--active {
+  color: var(--auth-text, #e5e5e5);
+  background: var(--auth-card-bg, #202020);
+  border-bottom: 2px solid var(--auth-accent, #df6035);
+  margin-bottom: -1px;
+}
+
+/* --- Opt-out: strip all panel chrome, render as a plain flat block --- */
+.panel--flat {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.panel--flat .panel-header {
+  background: transparent;
+  border-bottom: none;
+  padding: 0 0 8px;
+}
+
+.panel--flat .panel-body {
+  padding: 0;
+}
+
+/* ==========================================================================
+   App navbar — same amber-slate palette as the auth pages.
+   Structural/collapse behavior still comes from Bootstrap's navbar classes;
+   this just repaints colors via Bootstrap's CSS variable API + a few
+   custom classes, so it tracks the `data-theme` toggle everywhere.
+   ========================================================================== */
+
+.navbar.app-navbar {
+  --bs-navbar-color: var(--auth-text-dim);
+  --bs-navbar-hover-color: var(--auth-accent);
+  --bs-navbar-active-color: var(--auth-accent);
+  --bs-navbar-disabled-color: var(--auth-text-dimmer);
+  --bs-navbar-brand-color: var(--auth-text);
+  --bs-navbar-brand-hover-color: var(--auth-text);
+  background: var(--auth-card-bg);
+  border-bottom: 1px solid var(--auth-border);
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.app-navbar .navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.01em;
+}
+
+.app-navbar-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--auth-accent);
+  flex-shrink: 0;
+}
+
+.app-navbar .nav-link {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  transition: color 0.15s;
+}
+
+.app-navbar .nav-link[aria-current="page"] {
+  color: var(--auth-accent);
+}
+
+.app-navbar-toggler {
+  border-color: var(--auth-border-strong) !important;
+}
+
+.app-navbar-toggler .navbar-toggler-icon {
+  filter: invert(64%) sepia(0%) saturate(0%);
+}
+
+:root[data-theme="light"] .app-navbar-toggler .navbar-toggler-icon {
+  filter: none;
+}
+
+.app-navbar-user {
+  color: var(--auth-text-dim);
+  font-size: 13px;
+}
+
+.app-navbar-signout {
+  border: 1px solid var(--auth-accent-border);
+  background: var(--auth-accent-bg);
+  color: var(--auth-accent);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.app-navbar-signout:hover {
+  background: var(--auth-accent-border);
+  border-color: var(--auth-accent);
+}
+
+.app-navbar-theme-toggle {
+  background: transparent;
+  border: 1px solid var(--auth-border-strong);
+  color: var(--auth-text-dimmer);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.app-navbar-theme-toggle:hover {
+  color: var(--auth-text);
+  border-color: var(--auth-accent-border);
+}
+
+/* ==========================================================================
+   Dashboard shell — stacked panel sections (Applications, Jobs)
+   ========================================================================== */
+
+.dashboard-page {
+  min-height: 100vh;
+  background: var(--auth-bg);
+  padding: 1.5rem;
+  transition: background 0.2s;
+}
+
+.dashboard-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--auth-text);
+  margin: 0 0 1.25rem;
+}
+
+.dashboard-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.dashboard-section .panel-header {
+  font-size: 13px;
+}
+
+.dashboard-section-count {
+  color: var(--auth-text-dimmer);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* ==========================================================================
+   Table — swappable data-table-library component.
+   Renders as a normal grid/table at desktop widths; collapses each row
+   into a labeled-field card ("list view") on mobile via data-label,
+   which Table.jsx sets per column through react-table-library's cellProps.
+   ========================================================================== */
+
+.table-responsive .search-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0.75rem;
+  padding: 8px 10px;
+  background: var(--auth-input-bg);
+  border: 1px solid var(--auth-border-strong);
+  border-radius: var(--auth-radius);
+  color: var(--auth-text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.table-responsive .search-input:focus {
+  border-color: var(--auth-accent);
+}
+
+/* react-table-library's root element always carries a literal `table` class
+   (CompactTable doesn't forward a custom one). Bootstrap's global
+   `.table > :not(caption) > * > *` rule targets that same element and
+   out-specifies our theme's single emotion class, forcing every cell back
+   to Bootstrap's default white/black — so it's neutralized here instead. */
+.table-responsive .th,
+.table-responsive .td {
+  background-color: var(--auth-card-bg) !important;
+  color: var(--auth-text) !important;
+}
+
+.table-responsive .th {
+  background-color: var(--auth-muted-bg) !important;
+  color: var(--auth-text-dim) !important;
+}
+
+@media (max-width: 700px) {
+  .table-responsive [role="grid"] {
+    display: block;
+    width: 100%;
+  }
+
+  .table-responsive .tr-header {
+    display: none;
+  }
+
+  .table-responsive .body {
+    display: block;
+  }
+
+  .table-responsive .tr-body {
+    display: block;
+    background: var(--auth-card-bg);
+    border: 1px solid var(--auth-border);
+    border-radius: var(--auth-radius);
+    padding: 4px 12px;
+    margin-bottom: 10px;
+  }
+
+  .table-responsive .td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--auth-border);
+    text-align: right;
+  }
+
+  .table-responsive .td:last-child {
+    border-bottom: none;
+  }
+
+  .table-responsive .td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--auth-text-dim);
+    text-align: left;
+  }
 }

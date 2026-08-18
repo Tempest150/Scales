@@ -34,9 +34,42 @@ const rows = applications.map((a) => ({ id: a.id, ...a })); // every row needs a
  */
 import { CompactTable } from '@table-library/react-table-library/compact';
 import { useTheme } from '@table-library/react-table-library/theme';
-import { DEFAULT_OPTIONS, getTheme } from '@table-library/react-table-library/material-ui';
 
-const cellInputStyle = { width: '100%', border: 'none', fontSize: '1rem', padding: 0, margin: 0 };
+const cellInputStyle = { width: '100%', border: 'none', fontSize: '1rem', padding: 0, margin: 0, background: 'transparent', color: 'inherit', font: 'inherit' };
+
+// Palette-aware theme — driven by the amber-slate CSS variables shared with
+// the auth pages/nav/panels, so the table repaints with the light/dark toggle
+// instead of carrying the library's baked-in Material UI colors.
+// NOTE: rows render with `display: contents` (react-table-library's CSS-grid
+// layout), so a Row/HeaderRow background never actually paints — the visible
+// box is each cell. Background/color therefore live on BaseCell/Cell/HeaderCell.
+const scalesTableTheme = {
+  Table: `
+    font-size: 14px;
+    color: var(--auth-text, #e5e5e5);
+    background: var(--auth-card-bg, #202020);
+  `,
+  BaseCell: `
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--auth-border, #353535);
+  `,
+  HeaderCell: `
+    background-color: var(--auth-muted-bg, #2a2a2a);
+    color: var(--auth-text-dim, #808080);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  `,
+  Cell: `
+    background-color: var(--auth-card-bg, #202020);
+    color: var(--auth-text, #e5e5e5);
+  `,
+  Row: `
+    &:hover .td {
+      background-color: var(--auth-muted-bg, #2a2a2a);
+    }
+  `,
+};
 
 const formatValue = (value, column) => {
   if (column.format) return column.format(value);
@@ -126,7 +159,7 @@ const Table = ({ columns, nodes, searchable = false, editable = false, searchPro
     }));
   };
 
-  const theme = useTheme(getTheme(DEFAULT_OPTIONS));
+  const theme = useTheme(scalesTableTheme);
 
   const filterProperty = searchProperty || columns[0].property;
   const visibleNodes = searchable
@@ -139,6 +172,9 @@ const Table = ({ columns, nodes, searchable = false, editable = false, searchPro
 
   const tableColumns = columns.map((column) => ({
     label: column.label,
+    // Stamped onto every <td> for this column so the mobile "list" view
+    // (see .table-responsive in responsive.css) can render it as a label.
+    cellProps: { 'data-label': column.label },
     renderCell: (item) =>
       editable
         ? renderEditableCell(item, column, handleUpdate)
@@ -146,19 +182,19 @@ const Table = ({ columns, nodes, searchable = false, editable = false, searchPro
   }));
 
   return (
-    <>
+    <div className="table-responsive">
       {searchable && (
         <input
           type="text"
+          className="search-input"
           placeholder={`Search ${columns.find((c) => c.property === filterProperty)?.label || ''}`}
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          style={{ marginBottom: '0.5rem', padding: '0.5rem', width: '100%', boxSizing: 'border-box' }}
         />
       )}
 
       <CompactTable columns={tableColumns} data={{ nodes: visibleNodes }} theme={theme} />
-    </>
+    </div>
   );
 };
 

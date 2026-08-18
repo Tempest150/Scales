@@ -3,13 +3,12 @@ from datetime import datetime
 import httpx
 from quart import Blueprint, jsonify, g
 
-from constants import FetchType
+from constants import FetchType, Constants
 from db import Rimiru
 from useCheck import require_user
 from EmailClassifier import Duro
 
 emails_bp = Blueprint("emails", __name__)
-endpoint = "https://email.austindwomoh.xyz/"
 
 # user_id -> {"status": "idle"|"syncing"|"done"|"error", "total": int, "completed": int, "error": str|None}
 _sync_progress = {}
@@ -34,8 +33,9 @@ async def classify_pending_emails(user_id):
     """
     _sync_progress[user_id] = {"status": "syncing", "total": 0, "completed": 0,"failed": 0, "error": None}
     try:
+        print(f"[classify_pending_emails] user={user_id} starting classification")
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.get(f"{endpoint}pending_emails", params={"user_id": user_id})
+            resp = await client.get(f"{Constants.EMAIL_ENDPOINT}pending_emails", params={"user_id": user_id})
             resp.raise_for_status()
             pending_emails = resp.json()
 

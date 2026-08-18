@@ -13,8 +13,8 @@ function ProtectedApp({ user, onLogout }) {
     <>
       <Navbar user={user} onLogout={onLogout} />
       <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/" element={<Dashboard user={user} />} />
+        <Route path="/dashboard" element={<Dashboard user={user} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>

@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import secrets
+import httpx
 
 from quart import Blueprint, request, jsonify, session, g, url_for, redirect
 from authlib.integrations.httpx_client import AsyncOAuth2Client
@@ -48,13 +49,21 @@ async def login():
         return jsonify({'error': 'Invalid credentials'}), 401
 
     session["user_id"] = user['id']
-    fire_and_forget(classify_pending_emails(user['id']))  # runs after the response is sent, doesn't block login
+
+    if user.get('gmail_status') != 'connected':
+        return jsonify({
+            'id': user['id'],
+            'email': user['email'],
+            'name': user.get('name') or email,
+            'gmail_connect_url': f"{Constants.EMAIL_ENDPOINT}connect/start?user_id={user['id']}",
+        })
+
+    fire_and_forget(classify_pending_emails(user['id']))
     return jsonify({
         'id': user['id'],
         'email': user['email'],
         'name': user.get('name') or email,
     })
-
 
 @auth_bp.route('/api/auth/register', methods=['POST'])
 async def register():
@@ -134,7 +143,7 @@ async def google_callback():
         authorization_response=request.url,
     )
 
-    resp = await client.get(GOOGLE_USERINFO_URL) #type: ignore
+    resp = await client.get(GOOGLE_USERINFO_URL)  # type: ignore
     userinfo = resp.json()
     email = (userinfo.get('email') or '').strip().lower()
 
@@ -159,5 +168,12 @@ async def google_callback():
             conflict_column='lower(email)',
         )
 
-    session['user_id'] = user['id']  # type: ignore
-    return redirect(f'{Constants.FRONTEND_URL}/dashboard') #since the frontend is on a different port, we need to redirect to the frontend URL
+    session["user_id"] = user['id']  # type: ignore
+    print(f"User {user['id']} logged in via Google OAuth")  # type: ignore
+
+    if user.get('gmail_status') != 'connected':  # type: ignore
+        # Send the BROWSER to imap-checker's consent flow — not an httpx call.
+        return redirect(f"{Constants.EMAIL_ENDPOINT}connect/start?user_id={user['id']}")  # type: ignore
+
+    fire_and_forget(classify_pending_emails(user['id']))  # type: ignore
+    return redirect(f'{Constants.FRONTEND_URL}/dashboard')
