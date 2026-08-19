@@ -1,4 +1,7 @@
-import * as React from 'react';
+import * as React from "react";
+
+// inside the component, after fetching applications/jobs:
+
 /* import Table from '../components/Table';
 
 const columns = [
@@ -32,10 +35,19 @@ const rows = applications.map((a) => ({ id: a.id, ...a })); // every row needs a
 // both combined
 <Table columns={columns} nodes={rows} searchable editable />
  */
-import { CompactTable } from '@table-library/react-table-library/compact';
-import { useTheme } from '@table-library/react-table-library/theme';
+import { CompactTable } from "@table-library/react-table-library/compact";
+import { useTheme } from "@table-library/react-table-library/theme";
 
-const cellInputStyle = { width: '100%', border: 'none', fontSize: '1rem', padding: 0, margin: 0, background: 'transparent', color: 'inherit', font: 'inherit' };
+const cellInputStyle = {
+  width: "100%",
+  border: "none",
+  fontSize: "1rem",
+  padding: 0,
+  margin: 0,
+  background: "transparent",
+  color: "inherit",
+  font: "inherit",
+};
 
 // Palette-aware theme — driven by the amber-slate CSS variables shared with
 // the auth pages/nav/panels, so the table repaints with the light/dark toggle
@@ -74,9 +86,13 @@ const scalesTableTheme = {
 const formatValue = (value, column) => {
   if (column.format) return column.format(value);
   if (value instanceof Date) {
-    return value.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    return value.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
   }
-  if (typeof value === 'boolean') return value.toString();
+  if (typeof value === "boolean") return value.toString();
   return value;
 };
 
@@ -84,21 +100,27 @@ const renderEditableCell = (item, column, onUpdate) => {
   const value = item[column.property];
 
   switch (column.type) {
-    case 'date':
+    case "date":
       return (
         <input
           type="date"
           style={cellInputStyle}
-          value={value instanceof Date ? value.toISOString().substring(0, 10) : ''}
-          onChange={(event) => onUpdate(new Date(event.target.value), item.id, column.property)}
+          value={
+            value instanceof Date ? value.toISOString().substring(0, 10) : ""
+          }
+          onChange={(event) =>
+            onUpdate(new Date(event.target.value), item.id, column.property)
+          }
         />
       );
-    case 'select':
+    case "select":
       return (
         <select
           style={cellInputStyle}
           value={value}
-          onChange={(event) => onUpdate(event.target.value, item.id, column.property)}
+          onChange={(event) =>
+            onUpdate(event.target.value, item.id, column.property)
+          }
         >
           {(column.options || []).map((option) => (
             <option key={option} value={option}>
@@ -107,21 +129,25 @@ const renderEditableCell = (item, column, onUpdate) => {
           ))}
         </select>
       );
-    case 'checkbox':
+    case "checkbox":
       return (
         <input
           type="checkbox"
           checked={!!value}
-          onChange={(event) => onUpdate(event.target.checked, item.id, column.property)}
+          onChange={(event) =>
+            onUpdate(event.target.checked, item.id, column.property)
+          }
         />
       );
-    case 'number':
+    case "number":
       return (
         <input
           type="number"
           style={cellInputStyle}
           value={value}
-          onChange={(event) => onUpdate(Number(event.target.value), item.id, column.property)}
+          onChange={(event) =>
+            onUpdate(Number(event.target.value), item.id, column.property)
+          }
         />
       );
     default:
@@ -130,7 +156,9 @@ const renderEditableCell = (item, column, onUpdate) => {
           type="text"
           style={cellInputStyle}
           value={value}
-          onChange={(event) => onUpdate(event.target.value, item.id, column.property)}
+          onChange={(event) =>
+            onUpdate(event.target.value, item.id, column.property)
+          }
         />
       );
   }
@@ -140,9 +168,16 @@ const renderEditableCell = (item, column, onUpdate) => {
  * columns: [{ label, property, type?: 'text'|'date'|'select'|'checkbox'|'number', options?, format? }]
  * searchable/editable both default false, i.e. a plain read-only table.
  */
-const Table = ({ columns, nodes, searchable = false, editable = false, searchProperty }) => {
+const Table = ({
+  columns,
+  nodes,
+  searchable = false,
+  editable = false,
+  searchProperty,
+  onRowClick,
+}) => {
   const [data, setData] = React.useState({ nodes });
-  const [search, setSearch] = React.useState('');
+  const [search, setSearch] = React.useState("");
 
   // Reset local (editable) copy when the incoming `nodes` prop changes identity.
   // Done during render, not in an effect, to avoid a cascading extra render.
@@ -155,16 +190,29 @@ const Table = ({ columns, nodes, searchable = false, editable = false, searchPro
   const handleUpdate = (value, id, property) => {
     setData((state) => ({
       ...state,
-      nodes: state.nodes.map((node) => (node.id === id ? { ...node, [property]: value } : node)),
+      nodes: state.nodes.map((node) =>
+        node.id === id ? { ...node, [property]: value } : node,
+      ),
     }));
   };
 
-  const theme = useTheme(scalesTableTheme);
+  // rowProps.className isn't forwarded to the row DOM node by this library
+  // version, so the pointer cursor is expressed through the theme instead —
+  // `cursor` is CSS-inherited, so setting it on Row (display: contents)
+  // still cascades down into the visible cell boxes.
+  const rowIsClickable = Boolean(onRowClick) && !editable;
+  const theme = useTheme({
+    ...scalesTableTheme,
+    Row: `
+      ${scalesTableTheme.Row}
+      ${rowIsClickable ? "cursor: pointer;" : ""}
+    `,
+  });
 
   const filterProperty = searchProperty || columns[0].property;
   const visibleNodes = searchable
     ? data.nodes.filter((node) =>
-        String(node[filterProperty] ?? '')
+        String(node[filterProperty] ?? "")
           .toLowerCase()
           .includes(search.toLowerCase()),
       )
@@ -174,12 +222,19 @@ const Table = ({ columns, nodes, searchable = false, editable = false, searchPro
     label: column.label,
     // Stamped onto every <td> for this column so the mobile "list" view
     // (see .table-responsive in responsive.css) can render it as a label.
-    cellProps: { 'data-label': column.label },
+    cellProps: { "data-label": column.label },
     renderCell: (item) =>
       editable
         ? renderEditableCell(item, column, handleUpdate)
         : formatValue(item[column.property], column),
   }));
+
+  // Single source of truth for the row click, wired through CompactTable's
+  // native rowProps.onClick (one DOM listener per row) instead of stacking a
+  // second click handler in renderCell, which used to fire onRowClick twice.
+  const rowProps = {
+    onClick: (item) => !editable && onRowClick?.(item),
+  };
 
   return (
     <div className="table-responsive">
@@ -187,13 +242,18 @@ const Table = ({ columns, nodes, searchable = false, editable = false, searchPro
         <input
           type="text"
           className="search-input"
-          placeholder={`Search ${columns.find((c) => c.property === filterProperty)?.label || ''}`}
+          placeholder={`Search ${columns.find((c) => c.property === filterProperty)?.label || ""}`}
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
       )}
 
-      <CompactTable columns={tableColumns} data={{ nodes: visibleNodes }} theme={theme} />
+      <CompactTable
+        columns={tableColumns}
+        data={{ nodes: visibleNodes }}
+        theme={theme}
+        rowProps={rowProps}
+      />
     </div>
   );
 };

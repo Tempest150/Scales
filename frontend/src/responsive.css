@@ -665,10 +665,16 @@ body {
 
 .dashboard-sections {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: flex-start;
   gap: 1.25rem;
   max-width: 1100px;
   margin: 0 auto;
+}
+
+.dashboard-section {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .dashboard-section .panel-header {
@@ -680,6 +686,25 @@ body {
   font-weight: 400;
   text-transform: none;
   letter-spacing: normal;
+}
+
+@media (max-width: 900px) {
+  .dashboard-sections {
+    flex-direction: column;
+  }
+
+  /* flex-basis is a main-axis size — once the container above switches to
+     column, "0" means height:0 instead of width:0, collapsing each panel.
+     Swap to an auto basis so panels size to their content again. */
+  .dashboard-section {
+    flex: 1 1 auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .dashboard-page {
+    padding: 1rem;
+  }
 }
 
 /* ==========================================================================

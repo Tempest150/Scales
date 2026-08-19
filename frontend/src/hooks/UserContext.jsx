@@ -69,7 +69,7 @@ export function UserProvider({ children }) {
     setUser(data);
     setSyncStatus({ status: "syncing", total: 0, completed: 0, error: null });
     pollSyncStatus();
-  };
+  }; 
   const logout = async () => {
     stopPolling();
     await api.logout(); // clears the cookie server-side

@@ -40,5 +40,9 @@ export const api = {
   // Emails
   syncStatus() {
     return request("/emails/sync-status");
+  },
+
+  dashboardFill() {
+    return request("/application/dashboard");
   }
 };

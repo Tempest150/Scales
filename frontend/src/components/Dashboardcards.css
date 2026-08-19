@@ -1,0 +1,195 @@
+/* ==========================================================================
+   Dashboard cards — application & job cards.
+   Built on the .panel system (responsive.css) — same border/bg tokens,
+   flat VS Code-style chrome, amber-slate accent for interactive elements.
+   ========================================================================== */
+
+.dash-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.dash-card {
+  padding: 14px;
+  gap: 10px;
+  transition: border-color 0.15s;
+}
+
+.dash-card:hover {
+  border-color: var(--auth-border-strong, #454545);
+}
+
+.dash-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dash-card-heading {
+  min-width: 0;
+}
+
+.dash-card-company {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--auth-text-dim, #808080);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-card-role {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--auth-text, #e5e5e5);
+  line-height: 1.3;
+}
+
+.status-pill {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.dash-card-summary {
+  font-size: 13px;
+  color: var(--auth-text-dim, #808080);
+  line-height: 1.45;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dash-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dash-card-tag {
+  font-size: 11px;
+  color: var(--auth-text-dimmer, #6b6b6b);
+  background: var(--auth-muted-bg, #2a2a2a);
+  border: 1px solid var(--auth-border, #353535);
+  border-radius: 4px;
+  padding: 2px 7px;
+}
+
+.dash-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--auth-border, #353535);
+}
+
+.dash-card-meta {
+  font-size: 12px;
+  color: var(--auth-text-dimmer, #6b6b6b);
+}
+
+.dash-card-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--auth-accent, #df6035);
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: inherit;
+}
+
+.dash-card-action:hover {
+  text-decoration: underline;
+}
+
+.dash-card-action:disabled,
+.dash-card-action[aria-disabled="true"] {
+  color: var(--auth-text-dimmer, #6b6b6b);
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+.dash-empty {
+  font-size: 13px;
+  color: var(--auth-text-dim, #808080);
+  padding: 24px 12px;
+  text-align: center;
+  border: 1px dashed var(--auth-border, #353535);
+  border-radius: 4px;
+}
+
+@media (max-width: 560px) {
+  .dash-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   Details modal — overlay + panel shown on row/card click.
+   `.details-panel` combines with `.panel` (responsive.css) for its
+   background/border/radius; the rules here only add modal sizing.
+   ========================================================================== */
+
+.details-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 1000;
+}
+
+.details-panel {
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow: auto;
+}
+
+.details-close {
+  background: transparent;
+  border: none;
+  color: var(--auth-text-dim, #808080);
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 4px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.details-close:hover {
+  color: var(--auth-text, #e5e5e5);
+}
+
+.details-summary {
+  color: var(--auth-text-dim, #808080);
+  line-height: 1.5;
+}
+
+.details-apply-link {
+  margin-top: 12px;
+}
+
+@media (max-width: 560px) {
+  .details-overlay {
+    padding: 0.75rem;
+  }
+}
