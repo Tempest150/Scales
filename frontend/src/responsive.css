@@ -795,3 +795,33 @@ body {
     text-align: left;
   }
 }
+.dashboard-view-toggle {
+  display: inline-flex;
+  gap: 2px;
+  border: 1px solid var(--auth-border, #353535);
+  border-radius: 6px;
+  padding: 2px;
+  margin-bottom: 12px;
+}
+
+.dashboard-view-toggle button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 26px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--auth-text-dim, #808080);
+  cursor: pointer;
+}
+
+.dashboard-view-toggle button:hover {
+  background: var(--auth-muted-bg, #2a2a2a);
+}
+
+.dashboard-view-toggle button.active {
+  background: var(--auth-accent, #df6035);
+  color: #fff;
+}

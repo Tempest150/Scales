@@ -19,37 +19,37 @@ async def get_dashboard():
     user_id = g.current_user['id']
     db =await  Rimiru.shion()
     applications  = await db.execute(
-        sql="""
-            SELECT
-                a.id AS application_id,
-                c.name AS company,
-                a.role_title AS role_title,
-                a.status AS status,
-                a.status_changed_at AS status_changed_at,
-                m.id AS message_id
-            FROM application a
-            JOIN company c ON a.company = c.id
-            LEFT JOIN LATERAL (
-                SELECT id
-                FROM messages
-                WHERE application_id = a.id
-                ORDER BY received_at DESC
-                LIMIT 1
-            ) m ON true
-            WHERE a.user_id = $1
-            ORDER BY a.created_at DESC
-            LIMIT 10""",
-        params =[user_id]
-        )
+           sql="""
+               SELECT
+                   a.id AS application_id,
+                   c.name AS company,
+                   a.role_title AS role_title,
+                   a.status AS status,
+                   a.status_changed_at AS status_changed_at,
+                   m.gmail_message_id AS gmail_message_id
+               FROM application a
+               JOIN company c ON a.company = c.id
+               LEFT JOIN LATERAL (
+                   SELECT gmail_message_id
+                   FROM messages
+                   WHERE application_id = a.id
+                   ORDER BY received_at DESC
+                   LIMIT 1
+               ) m ON true
+               WHERE a.user_id = $1
+               ORDER BY a.created_at DESC
+               LIMIT 10""",
+           params =[user_id]
+           )
    
     jobs =  await db.execute(
         sql="""
         SELECT
-            j.title AS job_title,
+            INITCAP(j.title) AS job_title,
             j.apply_url AS apply_url,
             j.tags AS tags,
             j.summary AS summary,
-            c.name AS company_name
+            INITCAP(c.name) AS company_name
         FROM job_list j
         JOIN company c ON j.company = c.id
         WHERE j.enriched = TRUE

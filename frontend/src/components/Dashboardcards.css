@@ -156,7 +156,41 @@
   padding: 1.5rem;
   z-index: 1000;
 }
+.dash-card-taglist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
+.dash-card-tag-group {
+  font-size: 12px;
+}
+
+.dash-card-tag-label {
+  font-weight: 600;
+  color: var(--auth-text-dim, #808080);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.dash-card-tag-items {
+  margin: 0;
+  padding-left: 16px;
+  color: var(--auth-text, #e5e5e5);
+}
+
+.dash-card-tag-items li {
+  line-height: 1.4;
+}
+
+.dash-card-tag-empty {
+  font-size: 12px;
+  color: var(--auth-text-dim, #808080);
+  font-style: italic;
+  margin: 0;
+}
 .details-panel {
   width: 100%;
   max-width: 480px;

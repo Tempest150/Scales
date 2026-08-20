@@ -72,7 +72,6 @@ export default function Navbar({ user, onLogout }) {
 
             {user && (
               <li className="nav-item ms-md-2 d-flex align-items-center gap-2">
-                
                 <button
                   onClick={onLogout}
                   className="app-navbar-signout"

@@ -1,20 +1,27 @@
 import { BoxArrowUpRight, Envelope } from "react-bootstrap-icons";
 import "./Dashboardcards.css";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { parseTags } from "../hooks/util";
 /* ==========================================================================
    Status → color mapping (application status)
    Uses the amber-slate palette's chart colors for visual distinction
    without introducing new hues outside the established system.
    ========================================================================== */
 const STATUS_STYLES = {
-  applied: { label: "Applied", color: "var(--chart-1, #7399bf)" },
-  oa: { label: "OA", color: "var(--chart-4, #e2b146)" },
-  interview: { label: "Interview", color: "var(--auth-accent, #df6035)" },
-  offer: { label: "Offer", color: "var(--chart-2, #e16f41)" },
-  rejected: { label: "Rejected", color: "var(--auth-error, #ef4444)" },
-  ghosted: { label: "Ghosted", color: "var(--auth-text-dim, #808080)" },
+  Applied: { label: "Applied", color: "var(--chart-1, #7399bf)" },
+  OA: { label: "OA", color: "var(--chart-4, #e2b146)" },
+  Interview: { label: "Interview", color: "var(--auth-accent, #df6035)" },
+  Offer: { label: "Offer", color: "var(--chart-2, #e16f41)" },
+  Rejected: { label: "Rejected", color: "var(--auth-error, #ef4444)" },
+  Ghosted: { label: "Ghosted", color: "var(--auth-text-dim, #808080)" },
 };
-
+const LABELS = {
+  requirements: "Requirements",
+  preferred: "Preferred",
+  skills: "Skills",
+  technologies: "Technologies",
+  certifications: "Certifications",
+};
 function StatusPill({ status }) {
   const meta = STATUS_STYLES[status] || {
     label: status || "Unknown",
@@ -38,7 +45,7 @@ function StatusPill({ status }) {
    Application card
    ========================================================================== */
 export function ApplicationCard({ application, onViewEmail, onCardClick }) {
-  const { company, role_title, status, status_changed_at, message_id } =
+  const { company, role_title, status, status_changed_at, gmail_message_id } =
     application;
 
   const updated =
@@ -46,6 +53,7 @@ export function ApplicationCard({ application, onViewEmail, onCardClick }) {
       ? new Date(status_changed_at).toLocaleDateString(undefined, {
           month: "short",
           day: "numeric",
+          year: "numeric",
         })
       : "N/A";
 
@@ -65,22 +73,29 @@ export function ApplicationCard({ application, onViewEmail, onCardClick }) {
           </div>
         </div>
         <StatusPill status={status} />
+        {console.log("Status changed at:", status)}
       </div>
 
       <div className="dash-card-footer">
-        <span className="dash-card-meta">Updated {updated}</span>
+        <span className="dash-card-meta">Updated / Applied {updated}</span>
         <button
           type="button"
           className="dash-card-action"
-          disabled={!message_id}
+          disabled={!gmail_message_id}
           onClick={(e) => {
-            e.stopPropagation(); // don't also trigger onCardClick
-            message_id && onViewEmail?.(message_id);
+            e.stopPropagation();
+            gmail_message_id && onViewEmail?.(gmail_message_id);
           }}
-          title={message_id ? "View source email" : "No linked email"}
+          title={gmail_message_id ? "View source email" : "No linked email"}
         >
-          <Envelope size={13} />
-          View email
+          {gmail_message_id ? (
+            <>
+              <Envelope size={13} />
+              View email
+            </>
+          ) : (
+            <span className="text-muted">No email</span>
+          )}
         </button>
       </div>
     </div>
@@ -92,15 +107,8 @@ export function ApplicationCard({ application, onViewEmail, onCardClick }) {
    ========================================================================== */
 export function JobCard({ job, onCardClick }) {
   const { job_title, apply_url, tags, summary, company_name } = job;
-
-  const tagList = Array.isArray(tags)
-    ? tags
-    : typeof tags === "string" && tags.length
-      ? tags
-          .split(",")
-          .map((t) => t.trim())
-          .filter(Boolean)
-      : [];
+  const tagGroups = parseTags(tags);
+  const hasTags = Object.keys(tagGroups).length > 0;
 
   return (
     <div
@@ -119,14 +127,23 @@ export function JobCard({ job, onCardClick }) {
 
       {summary && <p className="dash-card-summary">{summary}</p>}
 
-      {tagList.length > 0 && (
-        <div className="dash-card-tags">
-          {tagList.slice(0, 4).map((tag) => (
-            <span key={tag} className="dash-card-tag">
-              {tag}
-            </span>
-          ))}
+      {hasTags ? (
+        <div className="dash-card-taglist">
+          {Object.entries(tagGroups)
+            .slice(0, 2)
+            .map(([key, items]) => (
+              <div key={key} className="dash-card-tag-group">
+                <div className="dash-card-tag-label">{LABELS[key] || key}</div>
+                <ul className="dash-card-tag-items">
+                  {items.slice(0, 3).map((item, i) => (
+                    <li key={i}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
         </div>
+      ) : (
+        <p className="dash-card-tag-empty">Couldn't find any tags</p>
       )}
 
       <div className="dash-card-footer">
@@ -168,7 +185,7 @@ export function ApplicationCardGrid({
     <div className="dash-card-grid">
       {applications.map((app) => (
         <ApplicationCard
-          key={app.application_id || app.message_id}
+          key={app.application_id}
           application={app}
           onViewEmail={onViewEmail}
           onCardClick={onCardClick}
@@ -241,39 +258,43 @@ export function ApplicationDetails({ application, onClose }) {
 export function JobDetails({ job, onClose }) {
   const { job_title, company_name, apply_url, tags, summary } = job;
 
-  const tagList = Array.isArray(tags)
-    ? tags
-    : typeof tags === "string" && tags.length
-      ? tags
-          .split(",")
-          .map((t) => t.trim())
-          .filter(Boolean)
-      : [];
+  const tagGroups = parseTags(tags);
+  console.log("Parsed tag groups:", tagGroups);
+  const hasTags = Object.keys(tagGroups).length > 0;
 
   return (
     <div className="details-overlay" onClick={onClose}>
       <div className="panel details-panel" onClick={(e) => e.stopPropagation()}>
         <div className="panel-header">
-          <span>{company_name || "Unknown company"}</span>
+          <span>{job_title || "N/A"}</span>
           <button className="details-close" onClick={onClose}>
             ×
           </button>
         </div>
         <div className="panel-body">
           <p>
-            <strong>Role:</strong> {job_title || "N/A"}
+            <strong>Company:</strong> {company_name || "N/A"}
           </p>
 
           {summary && <p className="details-summary">{summary}</p>}
 
-          {tagList.length > 0 && (
-            <div className="dash-card-tags">
-              {tagList.map((tag) => (
-                <span key={tag} className="dash-card-tag">
-                  {tag}
-                </span>
+          {hasTags ? (
+            <div className="dash-card-taglist">
+              {Object.entries(tagGroups).map(([key, items]) => (
+                <div key={key} className="dash-card-tag-group">
+                  <div className="dash-card-tag-label">
+                    {LABELS[key] || key}
+                  </div>
+                  <ul className="dash-card-tag-items">
+                    {items.map((item, i) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
               ))}
             </div>
+          ) : (
+            <p className="dash-card-tag-empty">Couldn't find any tags</p>
           )}
 
           <a
