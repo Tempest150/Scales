@@ -3,6 +3,9 @@ import json
 import asyncpg
 import ssl
 from constants import FetchType,Constants
+from logger import get_logger
+
+log = get_logger("db")
 class Rimiru:
     """
     Asynchronous DB access layer for Ouroboros.
@@ -30,6 +33,7 @@ class Rimiru:
         ssl_ctx.check_hostname = False
         ssl_ctx.verify_mode = ssl.CERT_NONE
 
+        log.info("creating connection pool host=%s db=%s", Constants.PGHOST, Constants.PGDATABASE)
         cls._pool = await asyncpg.create_pool(
             host=Constants.PGHOST,
             port=Constants.PGPORT,
@@ -40,6 +44,7 @@ class Rimiru:
             min_size=2,
             max_size=10,
         )
+        log.info("connection pool created (min=2 max=10)")
 
         cls._instance = cls(cls._pool)
         return cls._instance
@@ -102,9 +107,12 @@ class Rimiru:
         
         sql += ";"
         
+        log.debug("select %s filters=%s raw_where=%s", table, filters, raw_where)
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(sql, *params)
-            return [dict(r) for r in rows]
+            result = [dict(r) for r in rows]
+            log.debug("select %s -> %s row(s)", table, len(result))
+            return result
 
     async def selectOne(self, table: str, columns: list|None = None, filters: dict|None = None, order_by: str|None = None):
         """
@@ -121,7 +129,7 @@ class Rimiru:
     # -------------------------
     # UPSERT (INSERT or UPDATE)
     # -------------------------
-    async def upsert(self, table: str, data: dict, conflict_column: str ):
+    async def upsert(self, table: str, data: dict, conflict_column: str|None = None):
         """Insert or update a record based on conflict column
             To use this method, provide the following
             its important you know the unique constraint of the table you are upserting to.  The conflict_column parameter should be set to that unique constraint column.
@@ -142,23 +150,26 @@ class Rimiru:
             cols = ", ".join(columns)
             update_cols = ", ".join(f"{k} = EXCLUDED.{k}" for k in columns if k != conflict_column)
 
+            conflict_action = f"DO UPDATE SET {update_cols}" if update_cols else "DO NOTHING"
+            returning_clause = "RETURNING *;" if update_cols else ";"
+
             sql = f"""
                 INSERT INTO {table} ({cols}) 
                 VALUES ({placeholders})
                 ON CONFLICT ({conflict_column}) 
-                DO UPDATE SET {update_cols}
-                RETURNING *;
+                {conflict_action}
+                {returning_clause}
             """
 
+            log.debug("upsert %s data=%s conflict=%s", table, data, conflict_column)
             async with self.pool.acquire() as conn:
-                row = await conn.fetchrow(sql, *values) 
-                return dict(row) if row else None
+                row = await conn.fetchrow(sql, *values)
+                result = dict(row) if row else None
+                log.info("upsert %s (conflict=%s) -> %s", table, conflict_column, result)
+                return result
         except Exception as e:
+            log.exception("upsert %s failed: %s", table, type(e).__name__)
             raise
-        
-    
-        # -------------------------
-        # DELETE
     # -------------------------
     async def delete(self, table: str, filters: dict):
         """Delete records matching filters. List values use ANY() for multi-match."""
@@ -174,8 +185,11 @@ class Rimiru:
         where_clause = " AND ".join(conditions)
         sql = f"DELETE FROM {table} WHERE {where_clause} RETURNING *;"
 
+        log.debug("delete %s filters=%s", table, filters)
         async with self.pool.acquire() as conn:
-            return await conn.fetch(sql, *params)
+            rows = await conn.fetch(sql, *params)
+            log.info("delete %s filters=%s -> %s row(s) removed", table, filters, len(rows))
+            return rows
     # ----------------------------------------------------
     # ASYNC FUNCTION CALLS
     # ----------------------------------------------------
@@ -196,13 +210,16 @@ class Rimiru:
         placeholders = ", ".join(f"${i+1}" for i in range(len(params)))
         sql = f"SELECT * FROM {fn}({placeholders});"
 
+        log.debug("call_function %s params=%s fetch_type=%s", fn, params, fetch_type)
         async with self.pool.acquire() as conn:
             if fetch_type == FetchType.FETCHVAL.value:
-                return await conn.fetchval(sql, *params)
+                result = await conn.fetchval(sql, *params)
             elif fetch_type == FetchType.FETCHROW.value:
-                return await conn.fetchrow(sql, *params)
+                result = await conn.fetchrow(sql, *params)
             else:  # FetchType.FETCH
-                return await conn.fetch(sql, *params)
+                result = await conn.fetch(sql, *params)
+            log.info("call_function %s -> %r", fn, result)
+            return result
 
     async def execute(self, sql: str, params: list | None = None, fetch: bool = True):
         """Run raw SQL for cases the CRUD helpers don't cover (joins, INSERT...SELECT, etc).
@@ -213,11 +230,17 @@ class Rimiru:
                     (for statements with no rows to return, e.g. bulk INSERT/UPDATE).
         """
         params = params or []
+        one_line = " ".join(sql.split())
+        log.debug("execute sql=%r params=%s fetch=%s", one_line[:200], params, fetch)
         async with self.pool.acquire() as conn:
             if fetch:
                 rows = await conn.fetch(sql, *params)
-                return [dict(r) for r in rows]
-            return await conn.execute(sql, *params)
+                result = [dict(r) for r in rows]
+                log.info("execute -> %s row(s)  [%s]", len(result), one_line[:80])
+                return result
+            status = await conn.execute(sql, *params)
+            log.info("execute -> %s  [%s]", status, one_line[:80])
+            return status
 
  
        

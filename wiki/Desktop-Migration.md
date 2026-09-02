@@ -27,33 +27,29 @@ heavy runtime on top of the LLM's own footprint would work against the goal.
 |---|---|
 | 1. Freeze the Quart backend into a binary (PyInstaller/Nuitka) | **Not started.** `scripts/run-backend.js` still runs the backend via the venv's Python directly. |
 | 2. Set it up as a Tauri sidecar (`externalBin`) | **Not started.** `src-tauri/tauri.conf.json` has no `externalBin` entry. `src-tauri/` itself *is* scaffolded — default Tauri v2 shell, window config, no custom Rust commands yet. |
-| 3. Move the LLM off hardcoded Ollama — settings screen, abstracted client (base URL + optional key + model) | **Not started.** `EmailClassifier.Duro` still hardcodes `http://localhost:11434` / `deepseek-r1:8b`. `App.jsx` is still the default Vite template — no settings UI exists. |
+| 3. Move the LLM off hardcoded Ollama — settings screen, abstracted client (base URL + optional key + model) | **Not started.** `EmailClassifier.Duro` still hardcodes `http://localhost:11434` / `qwen2.5:7b-instruct`. No settings UI exists (the frontend now has login + dashboard screens, but nothing for LLM config). |
 | 4. Handle the Ollama dependency explicitly (require separate install vs. detect/prompt; don't bundle model weights) | **Decided, not implemented.** Direction chosen (don't bundle weights); no detection/prompt UI built. |
 | 5. Auto-updates via `tauri-plugin-updater` + signed release manifest | **Not started.** No plugin installed, no signing keypair generated. |
 | 6. Build and test installers per platform, on a clean machine | **Not started** — blocked on steps 1–2 (no working sidecar to bundle yet). |
 | Root dev tooling (`npm run dev` runs backend + `tauri dev` concurrently) | **Scaffolded and working** for local dev — see [[Local-Dev-Setup]]. |
-| `scripts/setup.js` (full one-shot environment bootstrap) | **Scaffolded**, but not wired to any `npm run` script, and duplicates venv setup already done by `scripts/install-backend.js` — see [[Local-Dev-Setup]]. |
+| `scripts/setup.js` (full one-shot environment bootstrap) | **Scaffolded**, wired as `npm run setup`; still duplicates venv setup already done by `scripts/install-backend.js` — see [[Local-Dev-Setup]]. |
 
-## Open design questions (not yet decided)
+## Queue design — partly resolved
 
-Per `to-do.md`, the pending-classification queue design is still open:
+The pending-classification queue now exists: the **imap-checker** service
+`INSERT`s cleaned emails into the shared `messages` table
+(`status = 'pending'`), and the Quart backend drains it via
+`classify_pending_emails` on login (see [[Ingest-Pipeline]] and
+[[Database-Layer]]). Ingest no longer depends on n8n.
 
-- Queue table shape — what columns, in the shared Postgres instance.
-- **Pull vs. push** — does the desktop app poll the queue, or does something
-  notify it?
-- **Multi-device claiming** — if a user runs the app on two machines, how do
-  they avoid double-classifying (or racing to write results for) the same
-  queued email?
-- Writing results back to Postgres — the shape of that write, and how it
-  reconciles with [[Database-Layer]]'s company+role/emails-array model.
+Still open:
 
-These are tracked as a GitHub issue per `to-do.md`; check there for the
-latest state rather than assuming this page is current.
-
-## Sequencing note
-
-n8n today POSTs directly to the hosted Quart backend's `/emails` route (see
-[[Ingest-Pipeline]]). The queue-based design means that call is replaced with
-an `INSERT` into Postgres — which itself is a change to a system (the n8n
-workflow) that lives outside this repo, so it isn't something a Scales PR
-alone can complete.
+- **Pull vs. push** — today it's pull, and only on login. Nothing re-checks
+  while the app is open or notifies it of new mail.
+- **Multi-device claiming** — `classify_pending_emails` has no per-row lock or
+  claim, so two concurrent runs for the same user (two devices, or a fast
+  re-login) would classify the same rows twice.
+- When classification moves client-side, the Ollama call in
+  `EmailClassifier.Duro` is what the sidecar runs against the user's own LLM;
+  `resolve_application` (the DB write) can stay server-side or move with it —
+  not decided.

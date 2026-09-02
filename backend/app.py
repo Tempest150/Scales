@@ -4,9 +4,12 @@ from quart import Quart, jsonify, request
 from quart_cors import cors
 
 from constants import Constants
+from logger import get_logger
 from routes.auth import auth_bp
 from routes.emails import emails_bp
 from routes.application import app_bp
+
+log = get_logger(__name__)
 app = Quart(__name__)
 app = cors(app, allow_origin="http://localhost:5173",allow_credentials=True,)  # Allow CORS for React frontend
 app.config['SECRET_KEY'] =  Constants.SECRET_KEY  # Set the secret key for session management
@@ -20,10 +23,12 @@ async def index():
 @app.route('/emails', methods=['POST'])
 async def classify_emails():
     data = await request.get_json()
-    
+
     return jsonify(data)
 
 if __name__ == '__main__':
+    log.section("serve", port=5010)
+    log.info("starting Scales API on port 5010")
     app.run(debug=True, port=5010)
     
     

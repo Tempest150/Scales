@@ -1,8 +1,35 @@
 # Ingest Pipeline
 
-How an email gets from Gmail to a classification result. Source: the n8n
-workflow export reviewed while writing this doc (not committed anywhere in
-this repo — n8n workflows live in the n8n instance, not in source control).
+> **Partly out of date.** The n8n → synchronous-`POST /emails` flow described
+> below has been replaced by a per-user Gmail OAuth connection + a Postgres
+> queue. Current shape is summarised in the next section; the n8n write-up is
+> kept as history until this page is rewritten in full.
+
+## Current flow (summary)
+
+1. **imap-checker service** (`email.austindwomoh.xyz`, separate repo) holds
+   each user's Gmail OAuth refresh token, polls Gmail, cleans each message
+   (Playwright `innerText` on the HTML part), and inserts it into the shared
+   `messages` table as `status = 'pending'` — storing `from_address`,
+   `subject`, Fernet-encrypted body, `gmail_message_id` and `gmail_thread_id`.
+2. On login, `backend/routes/auth.py` fire-and-forgets
+   `classify_pending_emails(user_id)` (`backend/routes/emails.py`), which
+   `GET`s `…/pending_emails` and, per email, calls `Duro.classify()` (see
+   [[Classification]]).
+3. Not application-related → the sender is added to `ignore_list` and the
+   `messages` row is deleted. Application-related → `resolve_application`
+   attaches it to an `application` row (thread match, then canonical-company
+   match — see [[Database-Layer]]) and sets `messages.status = 'classified'`.
+4. The frontend polls `/api/emails/sync-status` for an "N/M processed"
+   spinner.
+
+---
+
+## History: the n8n flow
+
+Source: the n8n workflow export reviewed while writing this doc (not committed
+anywhere in this repo — n8n workflows live in the n8n instance, not in source
+control).
 
 ```mermaid
 flowchart TD

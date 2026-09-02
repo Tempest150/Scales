@@ -33,11 +33,12 @@ the same environment-variable shape a Libra deployment uses, since both
 projects are meant to point at the same Postgres instance with separate
 migrations.
 
-**Nothing in `backend/app.py` calls `Rimiru` today.** The `/emails` route
-computes a classification and returns it in the HTTP response; no row is
-ever selected, inserted, or updated. See [[Ingest-Pipeline]] for the full
-request path and [[architecture_current]] for where this shows up as a
-dashed (not-wired-up) edge.
+`Rimiru` is now used on the read and write paths: `routes/application.py`
+serves the dashboard from it, and `routes/emails.py`'s
+`classify_pending_emails` / `resolve_application` write classified emails to
+`application` and `messages`. (The stub `/emails` route left in
+`backend/app.py` just echoes its body and is dead — the real ingest path is
+the pending-emails queue described in [[Ingest-Pipeline]].)
 
 ## Methods
 
@@ -46,10 +47,13 @@ dashed (not-wired-up) edge.
 | `shion()` | classmethod, singleton — returns the existing instance if the pool is already built |
 | `select(table, columns, filters, raw_where, raw_params, order_by, limit)` | supports a simple `filters` dict (`col = $n`) and/or a `raw_where` string with `raw_params` for anything more complex |
 | `selectOne(...)` | thin wrapper, `limit=1` |
-| `upsert(table, data, conflict_column)` | `INSERT ... ON CONFLICT (conflict_column) DO UPDATE SET ...`, JSON-encodes dict/list values before insert |
-| `delete(table, filters)` | plain `DELETE ... WHERE ...` |
+| `upsert(table, data, conflict_column=None)` | `INSERT ... ON CONFLICT (conflict_column) ...`, JSON-encodes dict/list values. If every column written *is* the conflict column (nothing left to `SET`), it emits `DO NOTHING` with no `RETURNING` and returns `None` — so an already-present row yields `None`, not the row. `resolve_application` does its company insert-or-get with explicit SQL for this reason. |
+| `delete(table, filters)` | `DELETE ... WHERE ... RETURNING *`; returns the deleted rows |
 | `call_function(fn, params, fetch_type)` | calls a Postgres function; `fetch_type` is a `FetchType` enum (`FETCH`/`FETCHVAL`/`FETCHROW`) |
-| `execute(sql, params, fetch)` | escape hatch for raw SQL (joins, `INSERT ... SELECT`, etc.) — the docstring notes values must always go through `$1, $2...` placeholders, never string-interpolated |
+| `execute(sql, params, fetch)` | escape hatch for raw SQL (joins, `INSERT ... SELECT`, etc.). `fetch=True` → `list[dict]`; `fetch=False` → the asyncpg status string (`"UPDATE 0"`, ...). Values must go through `$1, $2...` placeholders, never string-interpolated |
+
+Every method logs (`DEBUG` for the query, `INFO` for the row count / status)
+via [[Logging]] — the per-run `db.log` is a full statement trace.
 
 Unlike Libra's `JobDatabase`, `Rimiru` has no `bulk_upsert` and no
 `_serialize`/`_json_default` helpers for UUID/datetime-safe JSON encoding —
@@ -61,8 +65,10 @@ raise `TypeError` the way Libra's did before that fix was added there.
 
 No `CREATE TABLE` statement, migration file, or ORM model exists anywhere in
 this repo — like Libra, schema changes have been manual statements run
-directly against the live shared Postgres instance. This is the schema as it
-exists on that live DB today; see [[Diagrams]] for the ER diagram
+directly against the live shared Postgres instance. The `users`/`messages`
+columns below are reconstructed from the code that reads them (Scales +
+imap-checker), not dumped from the live DB, so treat exact types/defaults as
+approximate. See [[Diagrams]] for the ER diagram
 (`docs/diagrams/data_model.md`).
 
 ```sql
@@ -70,8 +76,12 @@ CREATE TABLE users(
      id uuid NOT NULL DEFAULT gen_random_uuid(),
     email varchar(255) NOT NULL,
     name varchar(255),
-    gmail_refresh_token text,
-    gmail_connected boolean DEFAULT false,
+    password text,                              -- sha256 hex; null for Google-only accounts
+    -- Gmail connection columns are written by the imap-checker service:
+    gmail_refresh_token_encrypted text,         -- Fernet
+    gmail_history_id bigint,
+    gmail_status text,                           -- 'connected' | 'needs_reauth' | null
+    last_synced_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP ,
     PRIMARY KEY(id)
@@ -97,7 +107,31 @@ CREATE TABLE application(
     CONSTRAINT application_job_fkey FOREIGN key(job_id) REFERENCES job_list(id)
 );
 CREATE INDEX application_user_id_index ON public.application USING btree (user_id);
-CREATE UNIQUE INDEX application_user_company_sender_unique ON public.application USING btree (user_id, company, lower((sender_email)::text));
+-- Superseded (see "Application resolution" below): the dedup key used to be
+--   application_user_company_sender_unique ON (user_id, company, lower(sender_email))
+-- and is now:
+CREATE UNIQUE INDEX application_user_company_unique ON public.application USING btree (user_id, company);
+```
+
+`messages` is the per-user email queue, populated by the imap-checker service
+(`email.austindwomoh.xyz`) and drained by `classify_pending_emails`:
+
+```sql
+-- abridged — imap-checker owns this table
+CREATE TABLE messages(
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL REFERENCES users(id),
+    from_address varchar,
+    subject varchar,
+    body_encrypted text,               -- Fernet, decrypted by imap-checker on read
+    gmail_message_id text,             -- for the "open in Gmail" dashboard link
+    gmail_thread_id text,              -- Gmail threadId; groups a conversation
+    classification jsonb,
+    application_id uuid REFERENCES application(id),
+    status text DEFAULT 'pending',     -- pending -> classified (or row deleted if not job-related)
+    received_at timestamptz DEFAULT now()
+);
+CREATE INDEX messages_user_thread_idx ON messages (user_id, gmail_thread_id);
 ```
 
 `company` and `job_id` FK straight into **Libra's** `company` and `job_list`
@@ -106,30 +140,52 @@ tables (see Libra's Database-Layer wiki page for those) — confirming the
 company/job data, it references it directly. Both are nullable, so an
 `application` row can exist without a resolved match to either.
 
-### `application` is the "one row per company+role" table
+### Application resolution (`resolve_application`)
 
-`emails jsonb NOT NULL DEFAULT '[]'` is the emails-array column. `status`
-is free-text (`default 'applied'`) — nothing in the schema constrains it to
-the `applied/oa/interview/rejected/offer/ghosted` set that
-[[Classification]]'s prompt uses, so the two aren't enforced to stay in sync
-at the DB level.
+Once [[Classification]] returns a positive result, `resolve_application`
+(`backend/routes/emails.py`) decides which `application` row it belongs to,
+in two layers:
 
-**The unique constraint doesn't actually include `role_title`.**
-`application_user_company_sender_unique` is on
-`(user_id, company, lower(sender_email))` — so the real natural key today is
-one row per (user, company, *sender email*), not per (user, company, *role*).
-Two different roles at the same company would collide on this constraint if
-their status-update emails share a `sender_email`. Worth confirming whether
-that's intentional (many ATSes send from one no-reply address regardless of
-role) or whether `role_title` needs to join the key.
+1. **Thread match.** If any earlier `messages` row with the same
+   `gmail_thread_id` is already linked to an application, this email joins
+   that one. This is what stops a recruiter's reply (from a personal
+   address) or an OA email (from an assessment vendor) spawning a second
+   application for a process already tracked.
+2. **Company match.** No thread hit falls back to one row per
+   `(user_id, company)`. The LLM's `company_name` is first run through
+   `_canonical_company` (strips `Inc/LLC/Ltd/Corp/GmbH/…`, collapses
+   whitespace) and matched case-insensitively, so "Google", "Google LLC" and
+   "Google, Inc." resolve to a single `company` row. No company name and no
+   thread match → the email is left `pending`.
 
-### `users.gmail_refresh_token` / `gmail_connected` vs. the current n8n setup
+`_advance_status` then moves the application's `status` **forward only**
+(`applied → oa → interview → offer/rejected`, per `_STATUS_RANK`) — a
+late-arriving "interview" email can't demote an "offer".
 
-`users` has columns for a per-user Gmail OAuth connection, but the n8n
-workflow behind [[Ingest-Pipeline]] authenticates via a single, n8n-managed
-Gmail credential (`Gmail account`, credential id `aFyEtIQPDFH4T665`) — not a
-per-user token pulled from this table. Nothing in this repo currently reads
-or writes `gmail_refresh_token`/`gmail_connected`. How a multi-user Gmail
-connection reconciles with today's single-account n8n trigger isn't decided
-— relevant to the queue design in [[Desktop-Migration]], since resolving an
-incoming email to the right `user_id` has to happen somewhere.
+The old Postgres function `upsert_application` is **no longer called** — it
+keyed on `sender_email`, which is exactly what split one hiring process
+across multiple rows. Resolution is now explicit SQL in Python.
+
+**Dedup key change.** `application_user_company_sender_unique`
+`(user_id, company, lower(sender_email))` is replaced by
+`application_user_company_unique` `(user_id, company)`. Consequence: two
+different roles at the same company now collapse into one application row.
+That's an accepted trade-off for the desktop use case; revisit if
+per-role tracking becomes a requirement (would need `job_id` or
+`lower(role_title)` back in the key, plus company-name disambiguation).
+
+`status` is still free-text at the DB level — nothing enforces the
+`applied/oa/interview/rejected/offer/ghosted` set; `_advance_status` and
+`Duro.VALID_STATUS` enforce it in the app layer only.
+
+### `users` and the Gmail connection
+
+The per-user Gmail OAuth connection is now real, but the token lives in the
+**imap-checker** service's own schema
+(`gmail_refresh_token_encrypted`, `gmail_history_id`, `gmail_status`,
+`last_synced_at` on its `users` view of the shared table), not in the columns
+this page originally documented. The Scales backend only reads
+`users.gmail_status` (`connected` / `needs_reauth` / unset) to decide whether
+to run the connect redirect or kick off `classify_pending_emails`
+(`routes/auth.py`). imap-checker owns all Gmail polling and writes the
+`messages` queue; Scales never touches Gmail directly.

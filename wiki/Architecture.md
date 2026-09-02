@@ -1,8 +1,11 @@
 # Architecture
 
-## Current, server-hosted state
+> The flowcharts on this page predate the per-user Gmail OAuth + `messages`
+> queue rework and are kept for the target-state comparison. For the flow that
+> actually runs today see [[Ingest-Pipeline]] ("Current flow") and
+> [[Database-Layer]].
 
-This is the path that actually runs against real Gmail traffic today.
+## Earlier server-hosted state (n8n, superseded)
 
 ```mermaid
 flowchart TD
@@ -66,17 +69,31 @@ flowchart TD
 
 ## Backend module map
 
-The backend is four files today:
-
-- `app.py` — Quart app, single `/emails` route, CORS locked to
-  `http://localhost:5173` (the Vite/Tauri dev origin).
+- `app.py` — Quart app; registers the `auth`, `emails`, and `application`
+  blueprints; CORS locked to `http://localhost:5173`. The `/emails` route
+  here is a leftover stub that echoes its body — the real ingest path is the
+  `messages` queue.
+- `routes/auth.py` — email/password login + register, Google OAuth login.
+  When a user has no Gmail connection it redirects the browser to
+  imap-checker's `connect/start`; once connected, login fire-and-forgets
+  `classify_pending_emails`.
+- `routes/emails.py` — `classify_pending_emails` (background queue drain),
+  `/api/emails/sync-status` (poll for the "N/M processed" spinner), and
+  `resolve_application` (thread- then company-based grouping). See
+  [[Database-Layer]].
+- `routes/application.py` — `GET /api/application/dashboard`: the user's
+  applications joined to `company` and their latest message, plus recent
+  enriched `job_list` rows from Libra.
 - `EmailClassifier.py` — `Duro`, the Ollama-backed classifier. See
   [[Classification]] and `docs/diagrams/classification_class.md`.
-- `db.py` — `Rimiru`, a generic asyncpg pool + CRUD layer (select/upsert/
-  delete/execute), currently unused. See [[Database-Layer]] and
-  `docs/diagrams/db_class.md`.
-- `constants.py` — reads `PGHOST`/`PGPORT`/`PGUSER`/`PGPASSWORD`/`PGDATABASE`/
-  `SECRET_KEY` from the environment via `python-dotenv`, plus an unrelated
-  `format_due_date()` helper and a `FetchType` enum used by `Rimiru.call_function`.
+- `db.py` — `Rimiru`, an asyncpg pool + CRUD layer
+  (select/upsert/delete/call_function/execute), now used on both the read and
+  write paths. See [[Database-Layer]] and `docs/diagrams/db_class.md`.
+- `logger.py` — per-run structured logging. See [[Logging]].
+- `useCheck.py` — `@require_user`, resolves the session cookie to
+  `g.current_user` or returns 401.
+- `constants.py` — env config (`PG*`, `SECRET_KEY`, `GOOGLE_CLIENT_ID/SECRET`,
+  `FRONTEND_URL`, `EMAIL_ENDPOINT`) via `python-dotenv`, plus a `FetchType`
+  enum and an unrelated `format_due_date()` helper.
 
 See [[Diagrams]] for the full index of Mermaid diagrams backing this page.

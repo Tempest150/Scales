@@ -8,7 +8,8 @@
     "build": "tauri build",
     "install": "concurrently \"npm:install:backend\" \"npm:install:frontend\"",
     "install:backend": "node scripts/install-backend.js",
-    "install:frontend": "cd frontend && npm install"
+    "install:frontend": "cd frontend && npm install",
+    "setup": "node scripts/setup.js"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.4",
