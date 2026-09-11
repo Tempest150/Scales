@@ -8,7 +8,9 @@ from logger import get_logger
 from routes.auth import auth_bp
 from routes.emails import emails_bp
 from routes.application import app_bp
-
+import sys
+sys.stdout.reconfigure(encoding="utf-8") #type: ignore Needed to allow emoji decoding in the logs
+sys.stderr.reconfigure(encoding="utf-8") #type: ignore
 log = get_logger(__name__)
 app = Quart(__name__)
 app = cors(app, allow_origin="http://localhost:5173",allow_credentials=True,)  # Allow CORS for React frontend
