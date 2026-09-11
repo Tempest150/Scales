@@ -176,7 +176,7 @@ async def _advance_status(conn: Rimiru, application_id, new_status: str):
 async def resolve_application(conn: Rimiru, user_id: str, email: dict, classification: dict):
     with log.section("resolve_application", user_id=user_id, email_id=email.get("id")):
         try:
-            thread_id = email.get("thread_id")
+            thread_id = email.get("gmail_thread_id")
             company_name = classification.get("company_name")
             role_title = classification.get("role_title")
             new_status = (classification.get("status") or "applied").lower()
