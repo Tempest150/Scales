@@ -175,9 +175,16 @@ const Table = ({
   editable = false,
   searchProperty,
   onRowClick,
+  // Controlled (server-side) search: when `onSearchChange` is passed, the
+  // input reflects `searchValue`/`onSearchChange` instead of local state,
+  // and `nodes` is trusted as already filtered — used when the data is
+  // paginated server-side and local filtering would only see the current page.
+  searchValue,
+  onSearchChange,
 }) => {
   const [data, setData] = React.useState({ nodes });
   const [search, setSearch] = React.useState("");
+  const isControlledSearch = typeof onSearchChange === "function";
 
   // Reset local (editable) copy when the incoming `nodes` prop changes identity.
   // Done during render, not in an effect, to avoid a cascading extra render.
@@ -210,13 +217,14 @@ const Table = ({
   });
 
   const filterProperty = searchProperty || columns[0].property;
-  const visibleNodes = searchable
-    ? data.nodes.filter((node) =>
-        String(node[filterProperty] ?? "")
-          .toLowerCase()
-          .includes(search.toLowerCase()),
-      )
-    : data.nodes;
+  const visibleNodes =
+    searchable && !isControlledSearch
+      ? data.nodes.filter((node) =>
+          String(node[filterProperty] ?? "")
+            .toLowerCase()
+            .includes(search.toLowerCase()),
+        )
+      : data.nodes;
 
   const tableColumns = columns.map((column) => ({
     label: column.label,
@@ -242,9 +250,17 @@ const Table = ({
         <input
           type="text"
           className="search-input"
-          placeholder={`Search ${columns.find((c) => c.property === filterProperty)?.label || ""}`}
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          placeholder={
+            isControlledSearch
+              ? "Search…"
+              : `Search ${columns.find((c) => c.property === filterProperty)?.label || ""}`
+          }
+          value={isControlledSearch ? searchValue : search}
+          onChange={(event) =>
+            isControlledSearch
+              ? onSearchChange(event.target.value)
+              : setSearch(event.target.value)
+          }
         />
       )}
 

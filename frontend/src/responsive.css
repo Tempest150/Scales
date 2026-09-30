@@ -714,7 +714,7 @@ body {
    which Table.jsx sets per column through react-table-library's cellProps.
    ========================================================================== */
 
-.table-responsive .search-input {
+.search-input {
   width: 100%;
   box-sizing: border-box;
   margin-bottom: 0.75rem;
@@ -729,8 +729,49 @@ body {
   transition: border-color 0.15s;
 }
 
-.table-responsive .search-input:focus {
+.search-input:focus {
   border-color: var(--auth-accent);
+}
+
+/* ==========================================================================
+   Pagination bar — shared by table and card views below each dashboard panel.
+   ========================================================================== */
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.pagination-status {
+  font-size: 12px;
+  color: var(--auth-text-dim);
+  white-space: nowrap;
+}
+
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: var(--auth-input-bg);
+  border: 1px solid var(--auth-border-strong);
+  border-radius: var(--auth-radius);
+  color: var(--auth-text);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  border-color: var(--auth-accent);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* react-table-library's root element always carries a literal `table` class

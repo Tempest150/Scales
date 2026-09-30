@@ -44,5 +44,17 @@ export const api = {
 
   dashboardFill() {
     return request("/application/dashboard");
-  }
+  },
+
+  getApplications({ page = 1, pageSize = 10, search = "" } = {}) {
+    const params = new URLSearchParams({ page, page_size: pageSize });
+    if (search) params.set("search", search);
+    return request(`/application/applications?${params.toString()}`);
+  },
+
+  getJobs({ page = 1, pageSize = 10, search = "" } = {}) {
+    const params = new URLSearchParams({ page, page_size: pageSize });
+    if (search) params.set("search", search);
+    return request(`/application/jobs?${params.toString()}`);
+  },
 };
