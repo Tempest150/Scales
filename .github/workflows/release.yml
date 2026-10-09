@@ -15,9 +15,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+        with: { node-version: 22 }
       - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
+        with: { python-version: '3.13' }
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Linux dependencies
@@ -26,17 +26,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
+      - name: Install JS dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm ci --prefix frontend
+
       - name: Build backend sidecar
-        shell: bash
         run: |
           pip install -r backend/requirements.txt pyinstaller
-          pyinstaller --onefile --name scales-backend backend/main.py
-          TRIPLE=$(rustc -Vv | grep host | cut -f2 -d' ')
-          EXT=""; [[ "$RUNNER_OS" == "Windows" ]] && EXT=".exe"
-          mkdir -p src-tauri/binaries
-          cp dist/scales-backend$EXT src-tauri/binaries/scales-backend-$TRIPLE$EXT
-
-      - run: npm ci
+          node scripts/build-sidecar.js
 
       - uses: tauri-apps/tauri-action@v0
         env:
@@ -45,3 +43,4 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'Scales ${{ github.ref_name }}'
           releaseDraft: true
+          args: --config src-tauri/tauri.release.conf.json
