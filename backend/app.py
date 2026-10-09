@@ -13,7 +13,10 @@ sys.stdout.reconfigure(encoding="utf-8") #type: ignore Needed to allow emoji dec
 sys.stderr.reconfigure(encoding="utf-8") #type: ignore
 log = get_logger(__name__)
 app = Quart(__name__)
-app = cors(app, allow_origin="http://localhost:5173",allow_credentials=True,)  # Allow CORS for React frontend
+app = cors(app, allow_origin=[
+    "http://localhost:5173",
+    "http://tauri.localhost", "https://tauri.localhost", "tauri://localhost"
+], allow_credentials=True,)  # Allow CORS for React frontend
 app.config['SECRET_KEY'] =  Constants.SECRET_KEY  # Set the secret key for session management
 app.register_blueprint(auth_bp)  # Register the auth blueprint
 app.register_blueprint(emails_bp)  # Register the emails blueprint

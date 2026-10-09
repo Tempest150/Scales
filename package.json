@@ -5,19 +5,19 @@
     "dev": "concurrently --names \"backend,tauri\" --prefix-colors \"blue,green\" \"npm:backend\" \"npm:tauri\"",
     "backend": "node scripts/run-backend.js",
     "tauri": "tauri dev",
-    "build": "tauri build",
+    "build": "node scripts/build-sidecar.js && tauri build --config src-tauri/tauri.release.conf.json",
     "install": "concurrently \"npm:install:backend\" \"npm:install:frontend\"",
     "install:backend": "node scripts/install-backend.js",
     "install:frontend": "cd frontend && npm install",
     "setup": "node scripts/setup.js"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.11.4",
+    "@tauri-apps/cli": "^2.12.1",
     "concurrently": "^8.2.2"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.11.1",
-    "@tauri-apps/plugin-opener": "^2.5.4",
+    "@tauri-apps/api": "^2.12.2",
+    "@tauri-apps/plugin-opener": "^2.7.0",
     "bootstrap": "^5.3.8",
     "bootstrap-icons": "^1.13.1",
     "react-bootstrap": "^2.10.10",
