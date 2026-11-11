@@ -13,7 +13,7 @@ sys.stdout.reconfigure(encoding="utf-8") #type: ignore Needed to allow emoji dec
 sys.stderr.reconfigure(encoding="utf-8") #type: ignore
 log = get_logger(__name__)
 app = Quart(__name__)
-app = cors(app, allow_origin="http://localhost:5173",allow_credentials=True,)  # Allow CORS for React frontend
+app = cors(app, allow_origin=Constants.CORS_ORIGINS, allow_credentials=True)  # Allow CORS for React frontend
 app.config['SECRET_KEY'] =  Constants.SECRET_KEY  # Set the secret key for session management
 app.register_blueprint(auth_bp)  # Register the auth blueprint
 app.register_blueprint(emails_bp)  # Register the emails blueprint
@@ -29,8 +29,8 @@ async def classify_emails():
     return jsonify(data)
 
 if __name__ == '__main__':
-    log.section("serve", port=5010)
-    log.info("starting Scales API on port 5010")
-    app.run(debug=True, port=5010)
+    log.section("serve", port=Constants.API_PORT)
+    log.info("starting Scales API on %s:%s", Constants.API_HOST, Constants.API_PORT)
+    app.run(debug=Constants.API_DEBUG, host=Constants.API_HOST, port=Constants.API_PORT)
     
     

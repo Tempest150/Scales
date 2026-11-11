@@ -79,7 +79,7 @@ if (hasCommand('ollama')) {
 }
 
 console.log('\n=== Pulling required models ===');
-const requiredModels = ['qwen2.5:3b'];
+const requiredModels = [process.env.OLLAMA_MODEL || 'qwen2.5:7b-instruct'];  // keep in sync with Constants.OLLAMA_MODEL
 for (const model of requiredModels) {
   run(`ollama pull ${model}`);
 }

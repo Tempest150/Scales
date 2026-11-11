@@ -63,8 +63,15 @@ raise `TypeError` the way Libra's did before that fix was added there.
 
 ## Schema
 
-No `CREATE TABLE` statement, migration file, or ORM model exists anywhere in
-this repo — like Libra, schema changes have been manual statements run
+**The authoritative schema is now `db/migrations/20261106000000_baseline.sql`**, a
+`pg_dump --schema-only` of the live DB, and changes go through dbmate migrations
+(see `db/README.md`). The live dump differs from the sketch below in places:
+there's no `application.emails` or `messages.classification` column, and no
+`(user_id, company)` unique index on `application` (only
+`application_user_job_unique` on `(user_id, job_id)`). Trust the migration file.
+
+Before 2026-11-06, no `CREATE TABLE` statement or migration file existed in
+this repo. Like Libra, schema changes were manual statements run
 directly against the live shared Postgres instance. The `users`/`messages`
 columns below are reconstructed from the code that reads them (Scales +
 imap-checker), not dumped from the live DB, so treat exact types/defaults as

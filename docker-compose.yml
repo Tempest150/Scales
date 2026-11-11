@@ -1,0 +1,83 @@
+# Scales dev stack: Quart API + Vite UI.
+#
+#   cp backend/.env.example backend/.env   # fill in the values
+#   docker compose up --build
+#   open http://localhost:5173
+#
+# The API talks to the shared Postgres configured in backend/.env (PGHOST etc.).
+#
+# Optional: --profile ollama   run Ollama in a container instead of on the host
+
+services:
+  backend:
+    build: ./backend
+    env_file:
+      - path: ./backend/.env
+        required: true
+    environment:
+      API_HOST: 0.0.0.0
+      API_PORT: 5010
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      # Browser reaches the API via the Vite proxy, so the request Host is "backend:5010".
+      # Pin the Google callback to the URL the browser can actually reach.
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:5010/api/auth/google/callback}
+      # Default: Ollama running on the host machine. Use http://ollama:11434 with --profile ollama.
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # makes host.docker.internal work on Linux too
+    ports:
+      - "5010:5010"
+    volumes:
+      - ./backend:/app        # live reload; logs land in backend/logs on the host
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    environment:
+      VITE_HOST: 0.0.0.0
+      VITE_API_TARGET: http://backend:5010
+      VITE_USE_POLLING: "1"   # file events don't cross Windows/macOS bind mounts
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules     # keep the container's Linux node_modules, not the host's
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # Schema migrations (dbmate), run on demand — see db/README.md:
+  #   docker compose run --rm migrate status
+  #   docker compose run --rm migrate new add_something
+  #   docker compose run --rm migrate up
+  migrate:
+    image: ghcr.io/amacneil/dbmate:2
+    profiles: ["tools"]
+    env_file:
+      - path: ./backend/.env
+        required: true
+    environment:
+      DBMATE_MIGRATIONS_DIR: /db/migrations
+      DBMATE_NO_DUMP_SCHEMA: "true"
+    volumes:
+      - ./db:/db
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    # Pull the model once:  docker compose exec ollama ollama pull qwen2.5:7b-instruct
+    # GPU (NVIDIA): uncomment below
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  ollama:

@@ -49,9 +49,9 @@ const cellInputStyle = {
   font: "inherit",
 };
 
-// Palette-aware theme — driven by the amber-slate CSS variables shared with
-// the auth pages/nav/panels, so the table repaints with the light/dark toggle
-// instead of carrying the library's baked-in Material UI colors.
+// Palette-aware theme — driven by the neo-brutalist CSS variables shared with
+// the auth pages/nav/panels (responsive.css), so the table repaints with the
+// light/dark toggle instead of carrying the library's baked-in Material UI colors.
 // NOTE: rows render with `display: contents` (react-table-library's CSS-grid
 // layout), so a Row/HeaderRow background never actually paints — the visible
 // box is each cell. Background/color therefore live on BaseCell/Cell/HeaderCell.
@@ -63,14 +63,15 @@ const scalesTableTheme = {
   `,
   BaseCell: `
     padding: 10px 12px;
-    border-bottom: 1px solid var(--auth-border, #353535);
+    border-bottom: 2px solid var(--nb-ink, #111);
   `,
   HeaderCell: `
-    background-color: var(--auth-muted-bg, #2a2a2a);
-    color: var(--auth-text-dim, #808080);
+    background-color: var(--auth-text, #111);
+    color: var(--auth-bg, #fdf6e3);
     font-size: 12px;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
   `,
   Cell: `
     background-color: var(--auth-card-bg, #202020);
@@ -164,9 +165,20 @@ const renderEditableCell = (item, column, onUpdate) => {
   }
 };
 
+const sortIndicator = (column, sort = []) => {
+  const index = sort.findIndex((s) => s.property === column.property);
+  if (index === -1) return "↕";
+  const arrow = sort[index].order === "desc" ? "↓" : "↑";
+  // Show the priority only once several columns are stacked.
+  return sort.length > 1 ? `${arrow}${index + 1}` : arrow;
+};
+
 /**
- * columns: [{ label, property, type?: 'text'|'date'|'select'|'checkbox'|'number', options?, format? }]
+ * columns: [{ label, property, type?: 'text'|'date'|'select'|'checkbox'|'number', options?, format?, sortable? }]
  * searchable/editable both default false, i.e. a plain read-only table.
+ * Sorting is controlled: pass `sort` ([{ property, order }], primary first) and
+ * `onSortChange(property)`; columns with `sortable: true` get a clickable header.
+ * `toolbar` is rendered beside the search input (e.g. filter dropdowns).
  */
 const Table = ({
   columns,
@@ -181,6 +193,9 @@ const Table = ({
   // paginated server-side and local filtering would only see the current page.
   searchValue,
   onSearchChange,
+  sort,
+  onSortChange,
+  toolbar,
 }) => {
   const [data, setData] = React.useState({ nodes });
   const [search, setSearch] = React.useState("");
@@ -227,7 +242,22 @@ const Table = ({
       : data.nodes;
 
   const tableColumns = columns.map((column) => ({
-    label: column.label,
+    label:
+      column.sortable && onSortChange ? (
+        <button
+          type="button"
+          className={`table-sort-button${sort?.some((s) => s.property === column.property) ? " active" : ""}`}
+          onClick={() => onSortChange(column.property)}
+          title={`Sort by ${column.label}`}
+        >
+          {column.label}
+          <span className="table-sort-indicator">
+            {sortIndicator(column, sort)}
+          </span>
+        </button>
+      ) : (
+        column.label
+      ),
     // Stamped onto every <td> for this column so the mobile "list" view
     // (see .table-responsive in responsive.css) can render it as a label.
     cellProps: { "data-label": column.label },
@@ -246,22 +276,27 @@ const Table = ({
 
   return (
     <div className="table-responsive">
-      {searchable && (
-        <input
-          type="text"
-          className="search-input"
-          placeholder={
-            isControlledSearch
-              ? "Search…"
-              : `Search ${columns.find((c) => c.property === filterProperty)?.label || ""}`
-          }
-          value={isControlledSearch ? searchValue : search}
-          onChange={(event) =>
-            isControlledSearch
-              ? onSearchChange(event.target.value)
-              : setSearch(event.target.value)
-          }
-        />
+      {(searchable || toolbar) && (
+        <div className="table-toolbar">
+          {searchable && (
+            <input
+              type="text"
+              className="search-input"
+              placeholder={
+                isControlledSearch
+                  ? "Search…"
+                  : `Search ${columns.find((c) => c.property === filterProperty)?.label || ""}`
+              }
+              value={isControlledSearch ? searchValue : search}
+              onChange={(event) =>
+                isControlledSearch
+                  ? onSearchChange(event.target.value)
+                  : setSearch(event.target.value)
+              }
+            />
+          )}
+          {toolbar}
+        </div>
       )}
 
       <CompactTable

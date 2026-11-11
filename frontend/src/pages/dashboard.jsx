@@ -15,6 +15,49 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 const PAGE_SIZE = 10;
 const SEARCH_DEBOUNCE_MS = 350;
 
+const STATUS_OPTIONS = [
+  { value: "applied", label: "Applied" },
+  { value: "oa", label: "OA" },
+  { value: "interview", label: "Interview" },
+  { value: "rejected", label: "Rejected" },
+  { value: "offer", label: "Offer" },
+  { value: "ghosted", label: "Ghosted" },
+];
+
+const MAX_SORT_KEYS = 3;
+
+// Sorts stack: clicking a column makes it the primary sort and keeps earlier
+// ones as tie-breakers (e.g. Status, then Company A-Z within each status).
+// Clicking the current primary cycles asc -> desc -> removed. With nothing
+// selected the server falls back to newest first.
+const nextSort = (current, property) => {
+  const [primary] = current;
+  const rest = current.filter((s) => s.property !== property);
+  if (primary?.property !== property) {
+    return [{ property, order: "asc" }, ...rest].slice(0, MAX_SORT_KEYS);
+  }
+  if (primary.order === "asc") return [{ property, order: "desc" }, ...rest];
+  return rest;
+};
+
+function StatusFilter({ value, onChange }) {
+  return (
+    <select
+      className="search-input table-filter-select"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      aria-label="Filter by status"
+    >
+      <option value="">All statuses</option>
+      {STATUS_OPTIONS.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 // Debounces a fast-changing input value; returns the settled value after
 // `delay` ms of no further changes (used to avoid firing a request per keystroke).
 function useDebouncedValue(value, delay) {
@@ -26,18 +69,20 @@ function useDebouncedValue(value, delay) {
   return debounced;
 }
 const applicationColumns = [
-  { label: "Company", property: "company" },
-  { label: "Role", property: "role_title" },
+  { label: "Company", property: "company", sortable: true },
+  { label: "Role", property: "role_title", sortable: true },
   {
     label: "Status",
     property: "status",
     type: "select",
     options: ["Applied", "OA", "Interview", "Rejected", "Offer", "Ghosted"],
+    sortable: true,
   },
   {
     label: "Updated / Applied",
     property: "status_changed_at",
     type: "date",
+    sortable: true,
     format: (d) => new Date(d).toLocaleDateString(),
   },
   {
@@ -63,9 +108,9 @@ const applicationColumns = [
 ];
 
 const jobColumns = [
-  { label: "Company", property: "company_name" },
-  { label: "Role", property: "job_title" },
-  { label: "Summary", property: "summary" },
+  { label: "Company", property: "company_name", sortable: true },
+  { label: "Role", property: "job_title", sortable: true },
+  { label: "Summary", property: "summary", sortable: true },
   {
     label: "Job Link",
     property: "apply_url",
@@ -96,6 +141,8 @@ function Dashboard({ user }) {
     applicationsSearchInput,
     SEARCH_DEBOUNCE_MS,
   );
+  const [applicationsStatus, setApplicationsStatus] = useState("");
+  const [applicationsSort, setApplicationsSort] = useState([]);
 
   const [jobs, setJobs] = useState([]);
   const [jobsPage, setJobsPage] = useState(1);
@@ -104,6 +151,7 @@ function Dashboard({ user }) {
   const [jobsLoading, setJobsLoading] = useState(false);
   const [jobsSearchInput, setJobsSearchInput] = useState("");
   const jobsSearch = useDebouncedValue(jobsSearchInput, SEARCH_DEBOUNCE_MS);
+  const [jobsSort, setJobsSort] = useState([]);
 
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
@@ -122,6 +170,21 @@ function Dashboard({ user }) {
     setJobsPage(1);
   };
 
+  const handleApplicationsStatusChange = (value) => {
+    setApplicationsStatus(value);
+    setApplicationsPage(1);
+  };
+
+  const handleApplicationsSortChange = (property) => {
+    setApplicationsSort((current) => nextSort(current, property));
+    setApplicationsPage(1);
+  };
+
+  const handleJobsSortChange = (property) => {
+    setJobsSort((current) => nextSort(current, property));
+    setJobsPage(1);
+  };
+
   useEffect(() => {
     let cancelled = false;
     async function fetchApplications() {
@@ -131,6 +194,8 @@ function Dashboard({ user }) {
           page: applicationsPage,
           pageSize: PAGE_SIZE,
           search: applicationsSearch,
+          status: applicationsStatus,
+          sort: applicationsSort,
         });
         if (cancelled) return;
         setApplications(data.applications ?? []);
@@ -146,7 +211,7 @@ function Dashboard({ user }) {
     return () => {
       cancelled = true;
     };
-  }, [applicationsPage, applicationsSearch]);
+  }, [applicationsPage, applicationsSearch, applicationsStatus, applicationsSort]);
 
   useEffect(() => {
     let cancelled = false;
@@ -157,6 +222,7 @@ function Dashboard({ user }) {
           page: jobsPage,
           pageSize: PAGE_SIZE,
           search: jobsSearch,
+          sort: jobsSort,
         });
         if (cancelled) return;
         setJobs(data.jobs ?? []);
@@ -172,7 +238,7 @@ function Dashboard({ user }) {
     return () => {
       cancelled = true;
     };
-  }, [jobsPage, jobsSearch]);
+  }, [jobsPage, jobsSearch, jobsSort]);
 
   const applicationRows = applications.map((app) => ({
     ...app,
@@ -231,17 +297,31 @@ function Dashboard({ user }) {
               searchable
               searchValue={applicationsSearchInput}
               onSearchChange={handleApplicationsSearchChange}
+              sort={applicationsSort}
+              onSortChange={handleApplicationsSortChange}
+              toolbar={
+                <StatusFilter
+                  value={applicationsStatus}
+                  onChange={handleApplicationsStatusChange}
+                />
+              }
               onRowClick={(row) => setSelectedApplication(row)}
             />
           ) : (
             <>
-              <input
-                type="text"
-                className="search-input"
-                placeholder="Search…"
-                value={applicationsSearchInput}
-                onChange={(e) => handleApplicationsSearchChange(e.target.value)}
-              />
+              <div className="table-toolbar">
+                <input
+                  type="text"
+                  className="search-input"
+                  placeholder="Search…"
+                  value={applicationsSearchInput}
+                  onChange={(e) => handleApplicationsSearchChange(e.target.value)}
+                />
+                <StatusFilter
+                  value={applicationsStatus}
+                  onChange={handleApplicationsStatusChange}
+                />
+              </div>
               <ApplicationCardGrid
                 applications={applicationRows}
                 onCardClick={setSelectedApplication}
@@ -278,6 +358,8 @@ function Dashboard({ user }) {
               searchable
               searchValue={jobsSearchInput}
               onSearchChange={handleJobsSearchChange}
+              sort={jobsSort}
+              onSortChange={handleJobsSortChange}
               onRowClick={(row) => setSelectedJob(row)}
             />
           ) : (

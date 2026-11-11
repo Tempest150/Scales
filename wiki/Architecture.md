@@ -13,7 +13,7 @@ flowchart TD
     N8N --> Cleaner["email-cleaner service<br/>(sibling container, not in this repo)"]
     N8N -->|"POST /emails<br/>{from, subject, text, user}"| API["Quart backend<br/>backend/app.py<br/>hosted at application.austindwomoh.xyz"]
     API --> Duro["EmailClassifier.Duro<br/>backend/EmailClassifier.py"]
-    Duro -->|"POST /api/generate<br/>model: deepseek-r1:8b"| Ollama["Ollama<br/>co-located with the backend"]
+    Duro -->|"POST /api/generate<br/>model: qwen2.5:7b-instruct"| Ollama["Ollama<br/>co-located with the backend"]
     Ollama --> Duro
     Duro --> API
     API -->|"200 JSON classification"| N8N

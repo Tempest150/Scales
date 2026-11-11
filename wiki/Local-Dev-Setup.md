@@ -41,11 +41,9 @@ silently drift.
 
 **`npm install` from the repo root** runs `install:backend` +
 `install:frontend` in parallel:
-- `install:backend` → `scripts/install-backend.js`: creates `backend/venv`,
-  installs `requirements.txt`, then unconditionally runs
-  `curl ... sh.rustup.rs | sh` to install Rust — with no OS check, so on
-  Windows this depends on having a `sh` on PATH (e.g. via Git Bash); it isn't
-  guarded the way `scripts/setup.js`'s Rust step is.
+- `install:backend` → `scripts/install-backend.js`: creates `backend/venv`
+  and installs `requirements.txt`. It no longer installs Rust; use
+  `npm run setup` for that (it checks the OS first).
 - `install:frontend` → `cd frontend && npm install`.
 
 

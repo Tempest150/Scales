@@ -3,17 +3,17 @@ import "./Dashboardcards.css";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { parseTags } from "../hooks/util";
 /* ==========================================================================
-   Status → color mapping (application status)
-   Uses the amber-slate palette's chart colors for visual distinction
-   without introducing new hues outside the established system.
+   Status → fill mapping (application status)
+   Flat neo-brutalist fills from the --nb-* palette (responsive.css); the
+   pill's ink border, shadow and dark text come from .status-pill.
    ========================================================================== */
 const STATUS_STYLES = {
-  Applied: { label: "Applied", color: "var(--chart-1, #7399bf)" },
-  OA: { label: "OA", color: "var(--chart-4, #e2b146)" },
-  Interview: { label: "Interview", color: "var(--auth-accent, #df6035)" },
-  Offer: { label: "Offer", color: "var(--chart-2, #e16f41)" },
-  Rejected: { label: "Rejected", color: "var(--auth-error, #ef4444)" },
-  Ghosted: { label: "Ghosted", color: "var(--auth-text-dim, #808080)" },
+  Applied: { label: "Applied", color: "var(--nb-cyan, #4dd4ff)" },
+  OA: { label: "OA", color: "var(--nb-yellow, #ffd23f)" },
+  Interview: { label: "Interview", color: "var(--nb-pink, #ff8fd8)" },
+  Offer: { label: "Offer", color: "var(--nb-lime, #b8f35b)" },
+  Rejected: { label: "Rejected", color: "var(--nb-red, #ff5c5c)" },
+  Ghosted: { label: "Ghosted", color: "var(--nb-grey, #b9b4a6)" },
 };
 const LABELS = {
   requirements: "Requirements",
@@ -25,17 +25,10 @@ const LABELS = {
 function StatusPill({ status }) {
   const meta = STATUS_STYLES[status] || {
     label: status || "Unknown",
-    color: "var(--auth-text-dim)",
+    color: "var(--nb-grey, #b9b4a6)",
   };
   return (
-    <span
-      className="status-pill"
-      style={{
-        color: meta.color,
-        borderColor: meta.color,
-        background: `color-mix(in srgb, ${meta.color} 14%, transparent)`,
-      }}
-    >
+    <span className="status-pill" style={{ background: meta.color }}>
       {meta.label}
     </span>
   );

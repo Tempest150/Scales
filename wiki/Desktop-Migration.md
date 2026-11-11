@@ -27,7 +27,7 @@ heavy runtime on top of the LLM's own footprint would work against the goal.
 |---|---|
 | 1. Freeze the Quart backend into a binary (PyInstaller/Nuitka) | **Not started.** `scripts/run-backend.js` still runs the backend via the venv's Python directly. |
 | 2. Set it up as a Tauri sidecar (`externalBin`) | **Not started.** `src-tauri/tauri.conf.json` has no `externalBin` entry. `src-tauri/` itself *is* scaffolded — default Tauri v2 shell, window config, no custom Rust commands yet. |
-| 3. Move the LLM off hardcoded Ollama — settings screen, abstracted client (base URL + optional key + model) | **Not started.** `EmailClassifier.Duro` still hardcodes `http://localhost:11434` / `qwen2.5:7b-instruct`. No settings UI exists (the frontend now has login + dashboard screens, but nothing for LLM config). |
+| 3. Move the LLM off hardcoded Ollama — settings screen, abstracted client (base URL + optional key + model) | **Not started.** Host and model are now configurable via `OLLAMA_HOST` / `OLLAMA_MODEL` env vars (defaults `http://localhost:11434` / `qwen2.5:7b-instruct`). No settings UI exists (the frontend now has login + dashboard screens, but nothing for LLM config). |
 | 4. Handle the Ollama dependency explicitly (require separate install vs. detect/prompt; don't bundle model weights) | **Decided, not implemented.** Direction chosen (don't bundle weights); no detection/prompt UI built. |
 | 5. Auto-updates via `tauri-plugin-updater` + signed release manifest | **Not started.** No plugin installed, no signing keypair generated. |
 | 6. Build and test installers per platform, on a clean machine | **Not started** — blocked on steps 1–2 (no working sidecar to bundle yet). |

@@ -17,10 +17,11 @@ export function ToastProvider({ children }) {
       {toast && (
         <div style={{
           position: 'fixed', bottom: 20, right: 20,
-          background: toast.type === 'error' ? '#f87171' : '#4ade80',
-          color: '#111', padding: '12px 16px', borderRadius: 8,
-          fontFamily: 'inherit', fontSize: 14, zIndex: 9999,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          background: toast.type === 'error' ? 'var(--nb-red, #ff5c5c)' : 'var(--nb-lime, #b8f35b)',
+          color: '#111', padding: '12px 16px', borderRadius: 0,
+          border: '3px solid var(--nb-ink, #111)',
+          fontFamily: 'inherit', fontSize: 14, fontWeight: 700, zIndex: 9999,
+          boxShadow: '4px 4px 0 var(--nb-ink, #111)',
         }}>
           {toast.message}
         </div>

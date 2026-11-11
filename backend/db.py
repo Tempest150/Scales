@@ -29,9 +29,7 @@ class Rimiru:
         if cls._instance is not None:
             return cls._instance
 
-        ssl_ctx = ssl.create_default_context()
-        ssl_ctx.check_hostname = False
-        ssl_ctx.verify_mode = ssl.CERT_NONE
+        ssl_ctx = cls._ssl_context(Constants.PGSSLMODE)
 
         log.info("creating connection pool host=%s db=%s", Constants.PGHOST, Constants.PGDATABASE)
         cls._pool = await asyncpg.create_pool(
@@ -48,6 +46,30 @@ class Rimiru:
 
         cls._instance = cls(cls._pool)
         return cls._instance
+
+    @staticmethod
+    def _ssl_context(mode: str):
+        """Build an SSL context following libpq's sslmode names.
+
+        disable     -> no TLS
+        require     -> TLS, certificate not checked (vulnerable to MITM)
+        verify-ca   -> TLS, certificate chain checked, hostname not checked
+        verify-full -> TLS, chain + hostname checked (default; PGHOST must be the
+                       name on the certificate, not an IP)
+        """
+        if mode == "disable":
+            return None
+        ctx = ssl.create_default_context()
+        if mode == "verify-full":
+            return ctx
+        ctx.check_hostname = False
+        if mode == "verify-ca":
+            return ctx
+        if mode == "require":
+            log.warning("PGSSLMODE=require: DB certificate is NOT verified")
+            ctx.verify_mode = ssl.CERT_NONE
+            return ctx
+        raise ValueError(f"unknown PGSSLMODE {mode!r} (use disable, require, verify-ca or verify-full)")
 
     # ----------------------------------------------------
     # TRANSACTION HELPER

@@ -3,6 +3,7 @@ from email.utils import parseaddr
 
 import httpx
 
+from constants import Constants
 from logger import get_logger
 
 log = get_logger("EmailClassifier")
@@ -27,9 +28,9 @@ class Duro:
     # below this the model isn't sure enough to file an application
     MIN_CONFIDENCE = 0.6
 
-    def __init__(self, model: str = "qwen2.5:7b-instruct", host: str = "http://localhost:11434"):
-        self.model = model
-        self.host = host
+    def __init__(self, model: str | None = None, host: str | None = None):
+        self.model = model or Constants.OLLAMA_MODEL
+        self.host = host or Constants.OLLAMA_HOST
 
     def _build_prompt(self, text: str, from_email: str, subject: str) -> str:
         return f"""You classify one email. Decide whether it is a step in a JOB APPLICATION

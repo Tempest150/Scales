@@ -13,6 +13,10 @@ async function request(path, options = {}) {
   return res.json();
 }
 
+// [{ property, order }] (primary first) -> "status:asc,company:desc"
+const serializeSort = (sort) =>
+  sort.map(({ property, order }) => `${property}:${order}`).join(",");
+
 export const api = {
   // Auth
   login(email, password) {
@@ -46,15 +50,24 @@ export const api = {
     return request("/application/dashboard");
   },
 
-  getApplications({ page = 1, pageSize = 10, search = "" } = {}) {
+  getApplications({
+    page = 1,
+    pageSize = 10,
+    search = "",
+    status = "",
+    sort = [],
+  } = {}) {
     const params = new URLSearchParams({ page, page_size: pageSize });
     if (search) params.set("search", search);
+    if (status) params.set("status", status);
+    if (sort.length) params.set("sort", serializeSort(sort));
     return request(`/application/applications?${params.toString()}`);
   },
 
-  getJobs({ page = 1, pageSize = 10, search = "" } = {}) {
+  getJobs({ page = 1, pageSize = 10, search = "", sort = [] } = {}) {
     const params = new URLSearchParams({ page, page_size: pageSize });
     if (search) params.set("search", search);
+    if (sort.length) params.set("sort", serializeSort(sort));
     return request(`/application/jobs?${params.toString()}`);
   },
 };

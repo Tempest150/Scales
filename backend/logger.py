@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
 import sys
 from contextvars import ContextVar
 from datetime import datetime
@@ -73,12 +74,27 @@ class _Formatter(logging.Formatter):
         return super().format(record)
 
 
+def _prune_old_runs() -> None:
+    """Keep only the newest LOG_KEEP_RUNS run folders (default 20; 0 disables pruning)."""
+    try:
+        keep = int(os.getenv("LOG_KEEP_RUNS", "20"))
+    except ValueError:
+        keep = 20
+    if keep <= 0:
+        return
+    runs = sorted(p for p in LOG_ROOT.glob("run_*") if p.is_dir() and p != RUN_DIR)
+    # Folder names start with a sortable timestamp, so the oldest come first.
+    for old in runs[: max(0, len(runs) - (keep - 1))]:
+        shutil.rmtree(old, ignore_errors=True)
+
+
 def _ensure_root() -> None:
     global _root_ready
     if _root_ready:
         return
 
     RUN_DIR.mkdir(parents=True, exist_ok=True)
+    _prune_old_runs()
     fmt = _Formatter(_FMT, _DATEFMT)
 
     root = logging.getLogger(_ROOT_NAME)

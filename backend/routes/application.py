@@ -15,6 +15,22 @@ log = get_logger("application")
 DEFAULT_PAGE_SIZE = 10
 MAX_PAGE_SIZE = 50
 
+APPLICATION_STATUSES = {"applied", "oa", "interview", "rejected", "offer", "ghosted"}
+
+# Whitelisted sort keys -> SQL expressions. Never interpolate client input
+# directly; only these fixed expressions ever reach the ORDER BY clause.
+APPLICATION_SORTS = {
+    "company": "LOWER(c.name)",
+    "role_title": "LOWER(a.role_title)",
+    "status": "LOWER(a.status)",
+    "status_changed_at": "a.status_changed_at",
+}
+JOB_SORTS = {
+    "company_name": "LOWER(c.name)",
+    "job_title": "LOWER(j.title)",
+    "summary": "LOWER(j.summary)",
+}
+
 
 def _parse_pagination(args):
     """Read page/page_size/search from request.args with safe defaults/bounds."""
@@ -33,9 +49,38 @@ def _parse_pagination(args):
     return page, page_size, search, offset
 
 
-async def _fetch_applications(db, user_id, page_size, offset, search):
+MAX_SORT_KEYS = 3
+
+
+def _parse_sort(args, allowed, default):
+    """
+    Resolve the `sort` query param to a safe ORDER BY clause. `sort` is a
+    comma-separated list of `key:order` pairs, primary first
+    (e.g. `status:asc,company:asc`), so later keys break ties in earlier ones.
+    Unknown/duplicate keys are dropped; nothing usable falls back to `default`.
+    """
+    clauses, seen = [], set()
+    for part in (args.get("sort") or "").split(","):
+        key, _, order = part.strip().partition(":")
+        if key not in allowed or key in seen:
+            continue
+        seen.add(key)
+        direction = "DESC" if order.lower() == "desc" else "ASC"
+        clauses.append(f"{allowed[key]} {direction} NULLS LAST")
+        if len(clauses) == MAX_SORT_KEYS:
+            break
+    return ", ".join(clauses) or default
+
+
+def _parse_status(args):
+    status = (args.get("status") or "").strip().lower()
+    return status if status in APPLICATION_STATUSES else None
+
+
+async def _fetch_applications(db, user_id, page_size, offset, search,
+                              status=None, order_by="a.created_at DESC"):
     rows = await db.execute(
-        sql="""
+        sql=f"""
             SELECT
                 a.id AS application_id,
                 c.name AS company,
@@ -59,9 +104,10 @@ async def _fetch_applications(db, user_id, page_size, offset, search):
                   OR c.name ILIKE '%' || $2 || '%'
                   OR a.role_title ILIKE '%' || $2 || '%'
               )
-            ORDER BY a.created_at DESC
+              AND ($5::text IS NULL OR LOWER(a.status) = $5)
+            ORDER BY {order_by}, a.id
             LIMIT $3 OFFSET $4""",
-        params=[user_id, search, page_size, offset],
+        params=[user_id, search, page_size, offset, status],
     )
     total = rows[0]["total_count"] if rows else 0
     for row in rows:
@@ -69,9 +115,9 @@ async def _fetch_applications(db, user_id, page_size, offset, search):
     return rows, total
 
 
-async def _fetch_jobs(db, page_size, offset, search):
+async def _fetch_jobs(db, page_size, offset, search, order_by="j.created_at DESC"):
     rows = await db.execute(
-        sql="""
+        sql=f"""
             SELECT
                 INITCAP(j.title) AS job_title,
                 j.apply_url AS apply_url,
@@ -87,7 +133,7 @@ async def _fetch_jobs(db, page_size, offset, search):
                   OR j.title ILIKE '%' || $1 || '%'
                   OR c.name ILIKE '%' || $1 || '%'
               )
-            ORDER BY j.created_at DESC
+            ORDER BY {order_by}, j.id
             LIMIT $2 OFFSET $3""",
         params=[search, page_size, offset],
     )
@@ -126,16 +172,20 @@ async def get_dashboard():
 async def get_applications():
     """
     Paginated + searchable applications list for the dashboard's applications tab.
-    Query params: page (default 1), page_size (default 10, max 50), search (optional).
+    Query params: page (default 1), page_size (default 10, max 50), search (optional),
+    status (optional, one of APPLICATION_STATUSES), sort (comma-separated APPLICATION_SORTS key:asc|desc).
     """
     user_id = g.current_user['id']
     page, page_size, search, offset = _parse_pagination(request.args)
-    with log.section("get_applications", user_id=user_id, page=page, search=search):
+    status = _parse_status(request.args)
+    order_by = _parse_sort(request.args, APPLICATION_SORTS, "a.created_at DESC")
+    with log.section("get_applications", user_id=user_id, page=page, search=search, status=status):
         db = await Rimiru.shion()
-        applications, total = await _fetch_applications(db, user_id, page_size, offset, search)
+        applications, total = await _fetch_applications(
+            db, user_id, page_size, offset, search, status, order_by)
 
-        log.info("applications for user=%s: page=%s page_size=%s search=%r -> %s/%s",
-                  user_id, page, page_size, search, len(applications), total)
+        log.info("applications for user=%s: page=%s page_size=%s search=%r status=%r sort=%r -> %s/%s",
+                  user_id, page, page_size, search, status, order_by, len(applications), total)
 
         return jsonify({
             "applications": applications,
@@ -151,12 +201,14 @@ async def get_applications():
 async def get_jobs():
     """
     Paginated + searchable job listings for the dashboard's jobs tab.
-    Query params: page (default 1), page_size (default 10, max 50), search (optional).
+    Query params: page (default 1), page_size (default 10, max 50), search (optional),
+    sort (comma-separated JOB_SORTS key:asc|desc).
     """
     page, page_size, search, offset = _parse_pagination(request.args)
+    order_by = _parse_sort(request.args, JOB_SORTS, "j.created_at DESC")
     with log.section("get_jobs", page=page, search=search):
         db = await Rimiru.shion()
-        jobs, total = await _fetch_jobs(db, page_size, offset, search)
+        jobs, total = await _fetch_jobs(db, page_size, offset, search, order_by)
 
         log.info("jobs: page=%s page_size=%s search=%r -> %s/%s", page, page_size, search, len(jobs), total)
 

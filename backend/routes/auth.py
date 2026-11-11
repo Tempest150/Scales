@@ -1,5 +1,4 @@
 import asyncio
-import hashlib
 import secrets
 import httpx
 
@@ -8,6 +7,7 @@ from authlib.integrations.httpx_client import AsyncOAuth2Client
 from constants import Constants
 from db import Rimiru
 from logger import get_logger
+from passwords import hash_password, needs_rehash, verify_password
 from useCheck import require_user
 from routes.emails import classify_pending_emails
 auth_bp = Blueprint("auth", __name__)
@@ -28,10 +28,6 @@ GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 GOOGLE_USERINFO_URL = 'https://openidconnect.googleapis.com/v1/userinfo'
 
 
-def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
-
-
 @auth_bp.route('/api/auth/login', methods=['POST'])
 async def login():
     log.section("login")
@@ -50,9 +46,17 @@ async def login():
         return jsonify({'error': 'Invalid credentials'}), 401
 
     user = rows[0]
-    if not user.get('password') or user['password'] != hash_password(password):
+    if not verify_password(user.get('password'), password):
         log.warning("login failed: bad password for user=%s", user['id'])
         return jsonify({'error': 'Invalid credentials'}), 401
+
+    if needs_rehash(user['password']):
+        await db.execute(
+            "UPDATE users SET password = $1, updated_at = now() WHERE id = $2",
+            params=[hash_password(password), user['id']],
+            fetch=False,
+        )
+        log.info("user=%s password hash upgraded to argon2", user['id'])
 
     session["user_id"] = user['id']
     log.info("user=%s logged in (gmail_status=%s)", user['id'], user.get('gmail_status'))
@@ -131,7 +135,7 @@ async def google_login():
     log.section("google_login")
     state = secrets.token_urlsafe(16)
     session['oauth_state'] = state
-    redirect_uri = url_for('auth.google_callback', _external=True)
+    redirect_uri = Constants.GOOGLE_REDIRECT_URI or url_for('auth.google_callback', _external=True)
     log.debug("google redirect_uri=%s", redirect_uri)
     client = AsyncOAuth2Client(
         client_id=Constants.GOOGLE_CLIENT_ID,
@@ -154,7 +158,7 @@ async def google_callback():
     client = AsyncOAuth2Client(
         client_id=Constants.GOOGLE_CLIENT_ID,
         client_secret=Constants.GOOGLE_CLIENT_SECRET,
-        redirect_uri=url_for('auth.google_callback', _external=True),
+        redirect_uri=Constants.GOOGLE_REDIRECT_URI or url_for('auth.google_callback', _external=True),
     )
     token = await client.fetch_token(
         GOOGLE_TOKEN_URL,
